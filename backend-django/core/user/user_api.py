@@ -179,7 +179,7 @@ def delete_user(request, user_id: str):
     return instance
 
 
-@router.delete("/user/batch/delete", response=UserSchemaBatchDeleteOut, summary="批量删除用户")
+@router.post("/user/batch/delete", response=UserSchemaBatchDeleteOut, summary="批量删除用户")
 def delete_batch_user(request, data: UserSchemaBatchDeleteIn):
     """
     批量删除用户

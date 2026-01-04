@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'channels',  # WebSocket支持
     'core',
     'scheduler',
+    'problem'
 ]
 
 MIDDLEWARE = [
@@ -342,7 +343,7 @@ X_FRAME_OPTIONS = 'DENY'
 # ================================================= #
 
 # 文件存储类型: local, oss, minio, azure
-FILE_STORAGE_TYPE = 'minio'
+FILE_STORAGE_TYPE = 'local'
 
 # 本地存储配置
 FILE_STORAGE_LOCAL_PATH = os.path.join(BASE_DIR, 'media', 'file_manager')

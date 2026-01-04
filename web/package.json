@@ -60,7 +60,8 @@
     "@vue-flow/core": "^1.48.0",
     "@vue-flow/minimap": "^1.5.4",
     "dompurify": "^3.3.1",
-    "marked": "^17.0.1"
+    "marked": "^17.0.1",
+    "md-editor-v3": "^6.3.0"
   },
   "devDependencies": {
     "@changesets/changelog-github": "catalog:",

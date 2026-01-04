@@ -201,9 +201,15 @@ onMounted(() => {
     style="border: none"
     class="mr-[10px] flex h-full flex-col"
     shadow="never"
+    :body-style="{
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+    }"
   >
     <!-- 搜索和添加区域 -->
-    <div class="mb-4 flex gap-2">
+    <div class="mb-4 flex gap-2 shrink-0">
       <ElInput
         v-model="searchKeyword"
         :placeholder="$t('permission.searchMenu')"

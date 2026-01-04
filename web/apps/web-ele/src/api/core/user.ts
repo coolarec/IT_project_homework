@@ -159,7 +159,7 @@ export async function deleteUserApi(userId: string) {
  */
 export async function batchDeleteUserApi(data: UserBatchDeleteInput) {
   return requestClient.post<{ count: number }>(
-    '/api/core/user/batch_delete',
+    '/api/core/user/batch/delete',
     data,
   );
 }

@@ -3,17 +3,17 @@
 # 数据库类型 MYSQL/SQLSERVER/SQLITE3/POSTGRESQL
 import os
 
-DATABASE_TYPE = "POSTGRESQL"
+DATABASE_TYPE = "MYSQL"
 # 数据库地址
-DATABASE_HOST = "django-ninja.zq-platform.cn"
+DATABASE_HOST = "localhost"
 # 数据库端口
-DATABASE_PORT = 5323
+DATABASE_PORT = 3306
 # 数据库用户名
-DATABASE_USER = os.environ.get('DEV_DB_USER', "")
+DATABASE_USER = os.environ.get('DEV_DB_USER', "root")
 # 数据库密码
-DATABASE_PASSWORD = os.environ.get('DEV_DB_PASSWORD', "")
+DATABASE_PASSWORD = os.environ.get('DEV_DB_PASSWORD', "123456")
 # 数据库名
-DATABASE_NAME = "zq-platform"
+DATABASE_NAME = "statements"
 
 # ================================================= #
 # ******** redis配置  *********** #
