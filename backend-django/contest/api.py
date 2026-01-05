@@ -1,9 +1,11 @@
 from ninja import Router
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 
 from .models import Contest, ContestProblem, VirtualProblem
 from problem.models import Problem
+from core.dept.dept_model import Dept
 from .schemas import (
     ContestIn, ContestOut, ContestDetailOut,
     ContestProblemIn, ContestProblemOut,
@@ -16,16 +18,19 @@ router = Router(tags=["Contest"])
 # 创建比赛（同时生成虚拟题）
 @router.post("/", response=ContestOut)
 def create_contest(request, payload: ContestIn):
+    dept=get_object_or_404(Dept,id=payload.dept_id)
+
     contest = Contest.objects.create(
         **payload.dict(),
-        creator=request.user
+        creator=request.auth,
+        dept=dept
     )
-
+    
     # 创建一个默认虚拟题（占位）
     VirtualProblem.objects.create(
         contest=contest,
         description="未命名题目",
-        author=request.user
+        author=request.auth
     )
 
     return contest
@@ -33,6 +38,12 @@ def create_contest(request, payload: ContestIn):
 # 比赛列表
 @router.get("/", response=list[ContestOut])
 def list_contests(request):
+    user=request.auth
+    depts = user.leading_depts.all()
+    query_set = Contest.objects.all()
+    query_set = query_set.filter(
+        Q(private_permission__icontains == 0)
+    )
     return Contest.objects.all()
 
 # 比赛详情（真实题 + 虚拟题）

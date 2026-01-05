@@ -253,6 +253,7 @@ class BearerAuth(HttpBearer):
                 logger.debug(f"白名单 API 访问: {path}")
                 return user
 
+            # print(path)
             # 7. 权限校验（使用 Core 模块的 Permission）
             has_permission = self._check_permission(user, path, method)
             if has_permission:
@@ -279,7 +280,7 @@ class BearerAuth(HttpBearer):
         try:
             # 标准化路径（将 UUID 替换为 :id）
             normalized_path = normalize_api_path(path)
-
+            print(normalized_path)
             # 获取 HTTP 方法对应的数字
             method_code = HTTP_METHOD_MAP.get(method)
             if method_code is None:

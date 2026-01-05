@@ -12,10 +12,11 @@ class ContestOut(Schema):
     contest_end_time: date
     notice: str
     status: int
-    is_public: bool
+    privite_permission: int
     freeze_time: int
     created_at: datetime
     updated_at: datetime
+    dept_id: int
 
 # Contest 创建 / 更新
 class ContestIn(Schema):
@@ -25,8 +26,9 @@ class ContestIn(Schema):
     contest_start_time: date
     contest_end_time: date
     notice: Optional[str] = ''
-    is_public: bool = True
+    privite_permission: int = 0
     freeze_time: int = 0
+    dept_id:Optional[int] = None
 
 # ContestProblem（比赛-题目关系）
 # 输出 schema
@@ -66,5 +68,3 @@ class VirtualProblemBindIn(Schema):
 class ContestDetailOut(ContestOut):
     problems: List[ContestProblemOut]
     virtual_problems: List[VirtualProblemOut]
-
-
