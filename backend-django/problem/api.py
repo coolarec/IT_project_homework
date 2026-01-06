@@ -12,7 +12,7 @@ from .schemas import ProblemCreateIn, ProblemListOut, ProblemDetailOut, TagOut, 
 from core.file_manager.file_manager_services import save_file_to_manager
 from core.user.user_model import User
 from typing import List, Optional
-
+from uuid import UUID
 
 router = Router(tags=["Problems"])
 
@@ -40,7 +40,7 @@ def create_problem(request, payload: ProblemCreateIn):
 @router.patch("/{problem_id}",response=ProblemDetailOut)
 def update_problem(
     request,
-    problem_id: int,
+    problem_id: UUID,
     payload: ProblemUpdateIn,
 ):
     problem = get_object_or_404(Problem, id=problem_id)
@@ -71,13 +71,18 @@ def update_problem(
     problem.save()
     return problem
 
+@router.delete("/{problem_id}",response=ProblemDetailOut)
+def delete_problem(request,problem_id:UUID):
+    problem = get_object_or_404(Problem,id=problem_id)
+    return delete(problem_id,Problem)
+
 @router.get('/{problem_id}/status',response=ProblemStatusUpdate)
-def getProblemStatus(request,problemId:int):
-    problem=get_object_or_404(Problem,id=problemId)
+def getProblemStatus(request,problem_id:UUID):
+    problem=get_object_or_404(Problem,id=problem_id)
     return problem
 
 @router.patch('/{problem_id}/status',response=ProblemStatusUpdate)
-def getProblemStatus(request,problem_id:int,data:ProblemStatusUpdate):
+def getProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
     problem=get_object_or_404(Problem,id=problem_id)
     update_data = data.dict(exclude_unset=True)
     for attr,value in update_data.items():
@@ -101,13 +106,16 @@ def list_problems(request, keyword: Optional[str] = None):
         queryset = queryset.filter(
             Q(title__icontains=keyword)           # 标题包含关键词（不区分大小写）
         )
-
     return queryset
 
 @router.get("/{problem_id}",response=ProblemDetailOut)
-def getProblemDetail(request,problem_id:int):
-    if request.auth.USER_TYPE_CHOICES == 0 or request.auth.USER_TYPE_CHOICES == 1 :
+def getProblemDetail(request,problem_id:UUID):
+    
+    print(request.auth.user_type)
+
+    if request.auth.user_type == 0 or request.auth.user_type == 1 :
         return get_object_or_404(Problem,id=problem_id)
+    
     return get_object_or_404(
         Problem,
         id=problem_id,
@@ -125,11 +133,11 @@ def createTag(request,payload:TagIn):
     return Tag.objects.create(**data)
 
 @router.delete("/tag/{tag_id}",response=TagOut)
-def deleteTag(request,tag_id:int):
+def deleteTag(request,tag_id:UUID):
     return delete(tag_id,Tag)
 
 @router.get("/{problem_id}/testcases", response=List[TestCaseOut])
-def list_testcases(request, problem_id: int):
+def list_testcases(request, problem_id: UUID):
     # 确认题目是否存在
     problem = get_object_or_404(Problem, id=problem_id)
 
@@ -140,7 +148,7 @@ def list_testcases(request, problem_id: int):
 
 
 @router.delete("/testcase/{testcase_id}",response=TestCaseOut)
-def delete_testcase(request, testcase_id: int):
+def delete_testcase(request, testcase_id: UUID):
     # 找到对应的测试点
     testcase = get_object_or_404(TestCase, id=testcase_id)
 
@@ -151,14 +159,14 @@ def delete_testcase(request, testcase_id: int):
     return delete(testcase.id,TestCase)
 
 @router.get('/{problem_id}/solutions',response=List[SolutionOut])
-def getSolutions(request,problem_id:int):
+def getSolutions(request,problem_id:UUID):
     user=request.auth
     problem = get_object_or_404(Problem,id=problem_id)
     solution = problem.solutions.all()
     return solution
 
 @router.post("/{problem_id}/solutions", response=SolutionOut)
-def create_solution(request, problem_id: int, payload: SolutionIn):
+def create_solution(request, problem_id: UUID, payload: SolutionIn):
     problem = get_object_or_404(Problem, id=problem_id)
     solution = Solution.objects.create(
         problem=problem,
@@ -168,14 +176,14 @@ def create_solution(request, problem_id: int, payload: SolutionIn):
     return solution
 
 @router.delete('solution/{solution_id}',response=SolutionOut)
-def delete_solution(request,solution_id:int):
+def delete_solution(request,solution_id:UUID):
     solution = get_object_or_404(Solution,id=solution_id)
     return delete(solution_id,Solution)
 
 @router.post("/{problem_id}/testcase", response=TestCaseOut)
 def upload_testcase(
     request,
-    problem_id: int,
+    problem_id: UUID,
     input_file: UploadedFile = File(...),
     output_file: UploadedFile = File(...),
     weight: int = Form(1)

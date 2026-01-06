@@ -5,7 +5,7 @@ import { requestClient } from '#/api/request';
  */
 
 export interface Tag {
-  id: number;
+  id: string;
   name: string;
 }
 
@@ -14,13 +14,13 @@ export interface TagIn {
 }
 
 export interface Example {
-  id?: number;
+  id?: string;
   input_data: string;
   output_data: string;
 }
 
 export interface TestCase {
-  id: number;
+  id: string;
   input_filename?: string,
   input_file?: string; // 文件 URL 地址
   output_filename?: string,
@@ -30,7 +30,7 @@ export interface TestCase {
 }
 
 export interface Solution {
-  id: number;
+  id: string;
   language: string;
   code: string;
   description?: string;
@@ -43,7 +43,7 @@ export interface Solution {
 
 // 题目列表项 (对应 ProblemListOut)
 export interface ProblemListItem {
-  id: number;
+  id?: string;
   title: string;
   difficulty: number;
   is_public: boolean;
@@ -164,7 +164,7 @@ export function getProblemListApi(params?: { keyword?: string }) {
 }
 
 /** 获取题目详情 */
-export function getProblemDetailApi(id: number) {
+export function getProblemDetailApi(id: string) {
   return requestClient.get<ProblemDetail>(`/api/problem/${id}`);
 }
 
@@ -173,8 +173,12 @@ export function createProblemApi(data: ProblemCreateInput) {
   return requestClient.post<ProblemDetail>('/api/problem/', data);
 }
 
-export function updateProblemApi(id: number,data: ProblemUpdateIn) {
+export function updateProblemApi(id: string,data: ProblemUpdateIn) {
   return requestClient.patch(`/api/problem/${id}`,data);
+}
+
+export function deleteProblemApi(id: string){
+  return requestClient.delete(`/api/problem/${id}`)
 }
 
 /**
@@ -190,7 +194,7 @@ export function getTagsApi() {
 export function createTagApi(data: TagIn) {
   return requestClient.post<Tag>(`/api/problem/tag/`, data);
 }
-export function deleteTagApi(id: number) {
+export function deleteTagApi(id: string) {
   return requestClient.delete(`/api/problem/tag/${id}`);
 }
 
@@ -198,7 +202,7 @@ export function deleteTagApi(id: number) {
  * 上传测试用例
  * 注意：涉及文件上传，建议在组件内构建 FormData 传入
  */
-export function uploadTestCaseApi(problemId: number, formData: FormData) {
+export function uploadTestCaseApi(problemId: string, formData: FormData) {
   return requestClient.post<TestCase>(
     `/api/problem/${problemId}/testcase`,
     formData,
@@ -210,25 +214,25 @@ export function uploadTestCaseApi(problemId: number, formData: FormData) {
 /**
  * 删除测试用例
  */
-export function deleteTestCaseApi(testCaseId: Number) {
+export function deleteTestCaseApi(testCaseId: string) {
   return requestClient.delete<TestCase>(`/api/problem/testcase/${testCaseId}`)
 }
 /**
  * 获取所有testcase
  */
-export function getTestCaseApi(id: Number) {
+export function getTestCaseApi(id: string) {
   return requestClient.get<TestCase[]>(`/api/problem/${id}/testcases`)
 }
 
 /** 为指定题目发布题解 */
-export function createSolutionApi(problemId: number, data: SolutionInput) {
+export function createSolutionApi(problemId: string, data: SolutionInput) {
   return requestClient.post<Solution>(`/api/problem/${problemId}/solutions`, data)
 }
 /** 获取指定题目的题解 */
-export function getSolutionsApi(problem_id:number){
+export function getSolutionsApi(problem_id:string){
   return requestClient.get<Solution[]>(`/api/problem/${problem_id}/solutions`)
 }
 /** 删除某个题解 */
-export function deleteSolutionApi(solution_id:number){
+export function deleteSolutionApi(solution_id:string){
   return requestClient.delete<Solution>(`/api/problem/solution/${solution_id}`)
 }

@@ -38,7 +38,7 @@ def create(request, data: dict | Schema, model: Type[Model]) -> QuerySet:
     user_info = request.auth
     if not isinstance(data, dict):
         data = data.dict()
-    data["sys_creator_id"] = user_info.id
+    # data["sys_creator_id"] = user_info.id
     query_set = model.objects.create(**data)
     if isinstance(query_set.id, uuid.UUID):
         query_set.id = str(query_set.id)

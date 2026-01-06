@@ -104,7 +104,7 @@ import { UploadFilled } from '@element-plus/icons-vue'
 
 const loading = ref(false);
 interface Props {
-  activeProblemId: number
+  activeProblemId: string
 }
 
 const currentStatus = ref<number>(0);
@@ -170,7 +170,7 @@ const submitTestCase = async () => {
 };
 
 // 删除样例
-const delTestcase = async (testCaseId: number) => {
+const delTestcase = async (testCaseId: string) => {
   try {
     // 1. 增加二次确认，防止误删
     await ElMessageBox.confirm(

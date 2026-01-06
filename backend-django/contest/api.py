@@ -1,130 +1,162 @@
-from ninja import Router
+from typing import List
+from uuid import UUID
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from ninja import Router
+from ninja.errors import HttpError
+from typing import Optional
+from django.db.models import Count
 
-from .models import Contest, ContestProblem, VirtualProblem
-from problem.models import Problem
-from core.dept.dept_model import Dept
+from .models import Contest, UserGroup, VirtualProblem
 from .schemas import (
-    ContestIn, ContestOut, ContestDetailOut,
-    ContestProblemIn, ContestProblemOut,
-    VirtualProblemIn, VirtualProblemOut,
-    VirtualProblemBindIn,
+    UserGroupIn, UserGroupOut, 
+    ContestIn, ContestOut, ContestListOut, ContestDetailOut,
+    VirtualProblemIn, VirtualProblemBindIn,
+    VirtualProblemOut, GroupAddMembersIn
 )
+from .filters import UserGroupFilter, ContestFilter
+# 导入你提供的 fu_crud 核心函数
+from common.fu_crud import create, update, delete, retrieve, get_or_none
 
-router = Router(tags=["Contest"])
+router = Router(tags=["竞赛管理"])
 
-# 创建比赛（同时生成虚拟题）
-@router.post("/", response=ContestOut)
-def create_contest(request, payload: ContestIn):
-    dept=get_object_or_404(Dept,id=payload.dept_id)
+# ================= 用户组管理  =================
+@router.post("/groups", response=UserGroupOut, summary="创建用户组")
+def create_group(request, data: UserGroupIn):
+    user = request.auth  # 当前登录用户对象
+    payload = data.dict()
+    payload['creator'] = user
+    usergroup = UserGroup.objects.create(**payload)
+    usergroup.members.add(user)
+    usergroup.member_count = 1
+    return usergroup
 
-    contest = Contest.objects.create(
-        **payload.dict(),
-        creator=request.auth,
-        dept=dept
-    )
+@router.get("/groups", response=List[UserGroupOut], summary="获取用户组列表")
+def list_groups(request, name: Optional[str] = None):
+    query_set = UserGroup.objects.annotate(member_count=Count('members'))
+    if name:
+        query_set = query_set.filter(name__icontains=name)
     
-    # 创建一个默认虚拟题（占位）
-    VirtualProblem.objects.create(
-        contest=contest,
-        description="未命名题目",
-        author=request.auth
-    )
+    query_set = query_set.order_by('-created_at')
+    
+    return query_set
 
-    return contest
+@router.patch("/groups/{id}", response=UserGroupOut, summary="更新用户组")
+def update_group(request, id: str, data: UserGroupIn):
+    return update(request, id, data, UserGroup)
 
-# 比赛列表
-@router.get("/", response=list[ContestOut])
-def list_contests(request):
-    user=request.auth
-    depts = user.leading_depts.all()
-    query_set = Contest.objects.all()
-    query_set = query_set.filter(
-        Q(private_permission__icontains == 0)
-    )
-    return Contest.objects.all()
+@router.delete("/groups/{id}", response=UserGroupOut, summary="删除用户组")
+def delete_group(request, id: str):
+    instance = get_object_or_404(UserGroup, id=id)
+    # 权限校验：非创建者不能删除
+    if str(instance.creator_id) != str(request.auth.id):
+        raise HttpError(403, "无权删除他人创建的用户组")
+    
+    # 返回 delete 函数处理后的实例
+    return delete(id, UserGroup)
 
-# 比赛详情（真实题 + 虚拟题）
-@router.get("/{contest_id}", response=ContestDetailOut)
-def contest_detail(request, contest_id: int):
-    contest = get_object_or_404(Contest, id=contest_id)
+@router.post("/groups/{id}/members", response=UserGroupOut, summary="向用户组增加成员")
+def add_group_members(request, id: str, data: GroupAddMembersIn):
+    """
+    增加用户组成员
+    """
+    # 1. 获取实例
+    instance = get_object_or_404(UserGroup, id=id)
 
-    return {
-        **contest.__dict__,
-        "problems": contest.contest_problem.all(),
-        "virtual_problems": contest.virtual_problems.all(),
-    }
+    # 2. 权限校验：只有创建者可以向组内加人
+    if str(instance.creator_id) != str(request.auth.id):
+        raise HttpError(403, "只有创建者可以管理成员")
 
-# 比赛题目（真实 Problem）
-# 添加题目到比赛
-@router.post("/{contest_id}/problems", response=ContestProblemOut)
-def add_problem_to_contest(
-    request,
-    contest_id: int,
-    payload: ContestProblemIn
-):
-    contest = get_object_or_404(Contest, id=contest_id)
-    problem = get_object_or_404(Problem, id=payload.problem_id)
+    # 3. 执行添加操作 (ManyToManyField 的标准操作)
+    instance.members.add(*data.user_ids)
 
-    obj = ContestProblem.objects.create(
-        contest=contest,
-        problem=problem,
-        order=payload.order,
-        color=payload.color,
-        alias=payload.alias,
-    )
+    # 4. 按照要求：return 实例
+    return instance
 
-    return obj
+@router.delete("/groups/{id}/members", response=UserGroupOut, summary="从用户组移除成员")
+def remove_group_members(request, id: str, data: GroupAddMembersIn):
+    """
+    移除用户组成员
+    """
+    instance = get_object_or_404(UserGroup, id=id)
 
-# 删除比赛题目
-@router.delete("/{contest_id}/problems/{problem_id}")
-def remove_problem_from_contest(request, contest_id: int, problem_id: int):
-    ContestProblem.objects.filter(
-        contest_id=contest_id,
-        problem_id=problem_id
-    ).delete()
-    return {"success": True}
+    if str(instance.creator_id) != str(request.auth.id):
+        raise HttpError(403, "只有创建者可以移除成员")
 
-# 虚拟题接口
-# 创建虚拟题（比赛编辑页用）
-@router.post("/{contest_id}/virtual-problems", response=VirtualProblemOut)
-def create_virtual_problem(
-    request,
-    contest_id: int,
-    payload: VirtualProblemIn
-):
-    contest = get_object_or_404(Contest, id=contest_id)
+    # 执行移除
+    instance.members.remove(*data.user_ids)
 
-    return VirtualProblem.objects.create(
-        contest=contest,
-        description=payload.description,
-        author=request.user
-    )
+    # return 实例
+    return instance
 
-# 虚拟题目列表
-@router.get("/{contest_id}/virtual-problems", response=list[VirtualProblemOut])
-def list_virtual_problems(request, contest_id: int):
-    return VirtualProblem.objects.filter(contest_id=contest_id)
+# ================= 竞赛管理 (Contest) =================
 
-# 虚拟题目转正
-@router.post("/virtual-problems/{virtual_id}/bind")
-def bind_virtual_problem(
-    request,
-    virtual_id: int,
-    payload: VirtualProblemBindIn
-):
-    vp = get_object_or_404(VirtualProblem, id=virtual_id)
-    problem = get_object_or_404(Problem, id=payload.real_problem_id)
+@router.post("/contests", response=ContestOut, summary="创建竞赛")
+def create_contest(request, data: ContestIn):
+    payload = data.dict(exclude={'allowed_group_ids'})
+    allowed_group_ids = data.allowed_group_ids
+    instance = create(request, payload, Contest)
+    if allowed_group_ids:
+        instance.allowed_groups.set(allowed_group_ids)
+        
+    return instance
 
-    vp.real_problem = problem
-    vp.save()
+@router.get("/contests", response=List[ContestListOut], summary="获取竞赛列表")
+def list_contests(request, filters: ContestFilter = ContestFilter()):
+    query_set = retrieve(request, Contest, filters)
+    
+    for item in query_set:
+        item.creator_name = item.creator.username
+        
+    return query_set
 
-    return {"success": True}
+@router.get("/contests/{id}", response=ContestDetailOut, summary="获取竞赛详情")
+def get_contest_detail(request, id: str):
+    instance = get_or_none(Contest, id=id)
+    if not instance:
+        raise HttpError(404, "竞赛不存在")
+    
+    instance.creator_name = instance.creator.username
+    instance.problems = list(instance.contest_problem.select_related('problem').all())
+    # 补全关联题目中 Schema 需要的 title
+    for cp in instance.problems:
+        cp.title = cp.problem.title
+        
+    instance.virtual_problems = list(instance.virtual_problems.all())
+    
+    return instance
 
-# 删除虚拟题
-@router.delete("/virtual-problems/{virtual_id}")
-def delete_virtual_problem(request, virtual_id: int):
-    VirtualProblem.objects.filter(id=virtual_id).delete()
-    return {"success": True}
+@router.patch("/contests/{id}", response=ContestOut, summary="更新竞赛")
+def update_contest(request, id: str, data: ContestIn):
+    # 处理 M2M 字段更新
+    allowed_group_ids = data.dict().get('allowed_group_ids')
+    
+    # 调用 update
+    instance = update(request, id, data, Contest)
+    
+    if allowed_group_ids is not None:
+        instance.allowed_groups.set(allowed_group_ids)
+        
+    return instance
+
+@router.delete("/contests/{id}", response=ContestOut, summary="删除竞赛")
+def delete_contest(request, id: str):
+    instance = get_object_or_404(Contest, id=id)
+    if str(instance.creator_id) != str(request.auth.id):
+        raise HttpError(403, "只有创建者可以删除此竞赛")
+        
+    return delete(id, Contest)
+
+# ================= 虚拟题目管理 (VirtualProblem) =================
+
+@router.post("/virtual-problems", response=VirtualProblemOut, summary="创建虚拟题目")
+def create_v_problem(request, data: VirtualProblemIn):
+    # 注意：fu_crud.create 默认注入 sys_creator_id
+    # 请确保 VirtualProblem 模型中有此字段，或在 create 函数中映射 author
+    instance = create(request, data, VirtualProblem)
+    return instance
+
+@router.patch("/virtual-problems/{id}/bind", response=VirtualProblemOut, summary="虚拟题转正")
+def bind_v_problem(request, id: str, data: VirtualProblemBindIn):
+    # 这里的 data 包含 real_problem_id
+    # 调用 update 并返回实例
+    return update(request, id, data, VirtualProblem)

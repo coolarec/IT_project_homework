@@ -7,7 +7,7 @@
           <span class="text-xl font-bold">标签管理库</span>
           <div class="flex items-center gap-2">
             <el-form ref="formRef" class="flex items-center gap-2">
-              <el-input v-model="newTag.name" placeholder="请输入" style="width: 200px" />
+              <el-input v-model="newTag.name" placeholder="请输入新标签" style="width: 200px" />
               <el-button type="primary" @click="addTag">新增标签</el-button>
             </el-form>
 
@@ -18,8 +18,8 @@
         </div>
       </template>
       <el-table :data="tableData" style="width: 100%" stripe v-loading="loading">
-        <el-table-column prop="id" label="ID" width="80px" />
-        <el-table-column prop="name" label="name">
+        <!-- <el-table-column prop="id" label="ID" width="80px" /> -->
+        <el-table-column prop="name" label="标签名">
           <template #default="{ row }">
             <span class="font-bold">{{ row.name }}</span>
           </template>
@@ -77,7 +77,7 @@ const addTag = async () => {
   }
 };
 
-const deleteTag = async (id: number) => {
+const deleteTag = async (id: string) => {
   try {
     await deleteTagApi(id);
     await fetchTagList();

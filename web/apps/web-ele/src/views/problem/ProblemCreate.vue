@@ -210,7 +210,6 @@ const form = reactive<ProblemDetail>({
   step_hint_done: 0,
   step_testcase_done: 0,
   step_solution_done: 0,
-  id: 0,
   created_at: ''
 });
 

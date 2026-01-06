@@ -65,13 +65,13 @@ import { createSolutionApi, type Solution, getSolutionsApi, type SolutionInput, 
 import { MdEditor, MdPreview } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 interface Props {
-  activeProblemId: number
+  activeProblemId: string
 }
 const currentStatus = ref<number>(0);
 const origin = ref<number>(0);
 const content = ["未完成", "创作中", "已完成"]
 
-const deleteSolution = async (id: number) => {
+const deleteSolution = async (id: string) => {
   await deleteSolutionApi(id);
   solutionList.value = await getSolutionsApi(props.activeProblemId)
 }

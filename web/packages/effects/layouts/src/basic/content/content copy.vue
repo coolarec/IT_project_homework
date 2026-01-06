@@ -96,31 +96,53 @@ function transformComponent(
 }
 </script>
 
-<!-- 找到你刚才发我的 LayoutContent.vue 文件，替换 template 部分 -->
 <template>
   <div class="relative h-full">
     <IFrameRouterView />
     <RouterView v-slot="{ Component, route }">
-      <!-- 1. 我们强制去掉 Transition 动画测试，这是白屏的最大元凶 -->
-      <!-- 2. 我们去掉 v-if="renderRouteView" 判断，让路由直接渲染 -->
-
-      <KeepAlive
-        v-if="keepAlive"
-        :exclude="getExcludeCachedTabs"
-        :include="getCachedTabs"
+      <Transition
+        v-if="getEnabledTransition"
+        :name="getTransitionName(route)"
+        appear
+        mode="out-in"
       >
+        <KeepAlive
+          v-if="keepAlive"
+          :exclude="getExcludeCachedTabs"
+          :include="getCachedTabs"
+        >
+          <component
+            :is="transformComponent(Component, route)"
+            v-if="renderRouteView"
+            v-show="!route.meta.iframeSrc"
+            :key="getTabKey(route)"
+          />
+        </KeepAlive>
         <component
-          :is="transformComponent(Component, route)"
-          v-show="!route.meta.iframeSrc"
-          :key="route.path"
+          :is="Component"
+          v-else-if="renderRouteView"
+          :key="getTabKey(route)"
         />
-      </KeepAlive>
-
-      <component
-        :is="Component"
-        v-else
-        :key="route.path"
-      />
+      </Transition>
+      <template v-else>
+        <KeepAlive
+          v-if="keepAlive"
+          :exclude="getExcludeCachedTabs"
+          :include="getCachedTabs"
+        >
+          <component
+            :is="transformComponent(Component, route)"
+            v-if="renderRouteView"
+            v-show="!route.meta.iframeSrc"
+            :key="getTabKey(route)"
+          />
+        </KeepAlive>
+        <component
+          :is="Component"
+          v-else-if="renderRouteView"
+          :key="getTabKey(route)"
+        />
+      </template>
     </RouterView>
   </div>
 </template>

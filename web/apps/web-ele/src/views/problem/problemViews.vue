@@ -12,7 +12,7 @@
 
       <!-- 题目表格 -->
       <el-table :data="tableData" v-loading="loading" style="width: 100%" stripe>
-        <el-table-column prop="id" label="ID" width="80" />
+        <!-- <el-table-column prop="id" label="ID" width="80" /> -->
         <el-table-column prop="title" label="题目名称" min-width="200">
           <template #default="{ row }">
             <span class="font-bold">{{ row.title }}</span>
@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, watch,nextTick } from 'vue';
 import {
   ElDrawer, ElTable, ElTableColumn,
   ElCard, ElRate, ElButton, ElTag, ElInput
@@ -112,7 +112,11 @@ watch(
   }
 )
 
-onMounted(fetchList);
+onMounted(async()=>{
+  await nextTick();
+  fetchList()
+}
+);
 
 // 打开侧边栏
 const openDrawer = async (problem: any, type: 'testcase' | 'solution') => {

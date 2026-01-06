@@ -13,7 +13,7 @@ from common.fu_auth import BearerAuth, ApiKey
 from core.router import core_router
 from scheduler.router import scheduler_router
 from problem.api import router as problem_router
-
+from contest.api import router as contest_router
 
 class MyJsonEncoder(NinjaJSONEncoder):
     def default(self, o):
@@ -40,3 +40,4 @@ api = NinjaAPI(auth=[BearerAuth(), ApiKey()], renderer=MyJsonRenderer())
 api.add_router('/core', core_router)
 api.add_router('/scheduler', scheduler_router)
 api.add_router('/problem', problem_router)
+api.add_router('/contest',contest_router)

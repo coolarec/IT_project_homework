@@ -1,11 +1,15 @@
 from django.db import models
 from core.user.user_model import User
+import uuid
 
 class Tag(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50, unique=True)
     def __str__(self): return self.name
 
 class Problem(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
     DIFFICULTY_CHOICES = [(i, f"{i}星") for i in range(1, 6)]
     
     title = models.CharField(max_length=200)
@@ -41,12 +45,14 @@ class Problem(models.Model):
 
 
 class Example(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE, related_name="examples")
     input_data = models.TextField()
     output_data = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
 class TestCase(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE, related_name="test_cases")
     size=models.IntegerField()
     input_filename = models.CharField(
@@ -73,6 +79,7 @@ class TestCase(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Solution(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     problem = models.ForeignKey(Problem, on_delete=models.CASCADE, related_name="solutions")
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     code = models.TextField()

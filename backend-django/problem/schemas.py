@@ -1,6 +1,7 @@
 from typing import List, Optional
 from ninja import Schema, ModelSchema
 from .models import Tag, Problem, Example, TestCase, Solution
+from uuid import UUID
 
 # --- Tag ---
 
@@ -28,10 +29,9 @@ class ExampleSchema(Schema):
 
 class ProblemListOut(ModelSchema):
     tags: List[TagOut]
-
     class Config:
         model = Problem
-        model_fields = ['id', 'title', 'difficulty', 'is_public', 'created_at']
+        model_fields = ['id','title', 'difficulty', 'is_public', 'created_at']
 
 
 class ProblemDetailOut(ModelSchema):
@@ -53,7 +53,7 @@ class ProblemCreateIn(Schema):
     is_public: bool = True
     time_limit: int
     memory_limit: int
-    tags: List[int] = []
+    tags: List[UUID] = []
     examples: List[ExampleSchema] = []  # 支持创建时直接传入样例
     step_title_done: int = 0
     step_limit_done: int = 0
@@ -76,7 +76,7 @@ class ProblemUpdateIn(Schema):
     is_public: Optional[bool] = None
     time_limit: Optional[int] = None
     memory_limit: Optional[int] = None
-    tags: Optional[List[int]] = None
+    tags: Optional[List[UUID]] = None
     examples: Optional[List[ExampleSchema]] = None
     step_title_done: Optional[int] = None
     step_description_done: Optional[int] = None

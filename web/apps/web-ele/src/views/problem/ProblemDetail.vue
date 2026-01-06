@@ -185,7 +185,7 @@ import {
 import { Upload, Plus, ArrowLeft } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
 import { useRoute, useRouter } from 'vue-router';
-import { getTagsApi, getProblemDetailApi, type Tag, type ProblemUpdateIn, type ExampleIn, updateProblemApi, type ProblemDetail } from '#/api/problem';
+import { getTagsApi, getProblemDetailApi, type Tag, type ProblemUpdateIn, type ExampleIn, updateProblemApi, type ProblemDetail,deleteProblemApi } from '#/api/problem';
 
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
@@ -200,7 +200,7 @@ const loading = ref(false);
 const tagOptions = ref<Tag[]>([]);
 
 // 判定是否为编辑模式
-const problemId = route.query.id ? Number(route.query.id) : null;
+const problemId = route.query.id ? String(route.query.id) : null;
 
 const form = reactive<ProblemUpdateIn>({
   title: '',
@@ -259,7 +259,7 @@ watch(
     const isMemoryValid = (newMemory ?? 0) > 0;
 
     if (isTimeValid && isMemoryValid) {
-      // 如果都填了，设为 2 (已完成) 或 1 (根据你的业务逻辑)
+      // 如果都填了，设为 2 (已完成) 或 1
       form.step_limit_done = 2;
     } else {
       // 只要有一个没填对，就回退到 0
@@ -290,7 +290,7 @@ let origin = reactive<ProblemDetail>({
   step_hint_done: 0,
   step_testcase_done: 0,
   step_solution_done: 0,
-  id: 0,
+  id: '',
   created_at: '',
 });
 
@@ -313,8 +313,7 @@ onMounted(async () => {
   loading.value = true;
   if (problemId != null) {
     try {
-      fetchDetail()
-
+      await fetchDetail()
       const isEmpty = (val: any) => {
         if (Array.isArray(val)) return val.length === 0;
         return !val || String(val).trim() === '';
@@ -333,7 +332,7 @@ onMounted(async () => {
               setStatus(0);
             } else if (isEmpty(oldVal)) {
               setStatus(1);
-            } else if (!form[stepKey]) {
+            } else if (form[stepKey]?.toString().trim() !== '') {
               setStatus(1);
             }
           },
@@ -373,7 +372,7 @@ const handleDelete = () => {
   }).then(async () => {
     try {
       // 此处调用你的删除 API
-      // await deleteProblemApi(problemId!);
+      await deleteProblemApi(problemId!);
       ElMessage.success('题目已删除');
       router.push('/problem/ProblemView');
     } catch (e) {
@@ -383,7 +382,7 @@ const handleDelete = () => {
   fetchDetail()
 };
 
-const submitEdit = async (id: number) => {
+const submitEdit = async (id: string) => {
   const payload: ProblemUpdateIn = {};
 
   if (form.title !== origin.title)
@@ -449,7 +448,7 @@ const submitEdit = async (id: number) => {
   if (!Object.keys(payload).length) {
     ElMessage.info('未修改任何内容');
   }
-  else{
+  else {
     await updateProblemApi(id, payload);
     Object.assign(origin, JSON.parse(JSON.stringify(form)));
     ElMessage.success('更新成功！');

@@ -3,19 +3,53 @@ from core.user.user_model import User
 from problem.models import Problem
 from core.dept.dept_model import Dept
 # Create your models here.
+import uuid
+
+class UserGroup(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, help_text="用户组名称")
+    description = models.TextField(blank=True, null=True, help_text="用户组描述")
+    a=models.CharField(max_length=10,default="==")
+    # 创建者
+    creator = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='owned_groups',
+        help_text="创建者"
+    )
+
+    # 组成员（多对多）
+    members = models.ManyToManyField(
+        User,
+        related_name='user_groups',
+        blank=True,
+        help_text="组成员"
+    )
+
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "用户组"
+        verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
 
 
 class Contest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     STATUS_CHOICES = (
         (0, '未开始'),
         (1, '报名中'),
         (2, '进行中'),
         (3, '已结束'),
     )
-    PRIVITE_PERRMISSION=(
-        (0,'仅个人人可见'),
-        (1,'同部门内可见'),
-        (2,'全体可见')
+    PRIVATE_PERMISSION = (
+        (0, '仅个人可见'),
+        (2, '指定用户组可见'),
+        (3, '全体可见'),
     )
     title = models.CharField(max_length=200)
     prepare_start_time = models.DateField()
@@ -24,7 +58,13 @@ class Contest(models.Model):
     contest_end_time = models.DateField()
     notice = models.TextField(blank=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=0)
-    privite_permission=models.IntegerField(choices=PRIVITE_PERRMISSION,default=0)
+    allowed_groups = models.ManyToManyField(
+        UserGroup,
+        blank=True,
+        related_name='contests',
+        help_text="允许参加的用户组（当权限为指定用户组可见时生效）"
+    )
+    privite_permission = models.IntegerField(choices=PRIVATE_PERMISSION, default=0)
 
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -41,34 +81,20 @@ class Contest(models.Model):
         null=True
     )
 
-class ContestProblem(models.Model):
-    contest = models.ForeignKey(
-        Contest,
-        on_delete=models.CASCADE,
-        related_name='contest_problem'
-    )
-    problem=models.ForeignKey(
-        Problem,
-        on_delete=models.CASCADE,
-        related_name='problem_contest',
-    )
-    order = models.IntegerField()
-    color = models.CharField(max_length=50)
-    alias = models.CharField(max_length=200)
-    class Meta:
-        unique_together = ('contest', 'problem')
-        ordering = ['order']
-
 # 虚拟问题
 class VirtualProblem(models.Model):
-    contest = models.ForeignKey(
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100,default='')
+    contest = models.OneToOneField(
         Contest,
+        null=True,
         on_delete=models.CASCADE,
         related_name='virtual_problems'
     )
     description = models.CharField(max_length=200)
     author = models.ForeignKey(
         User,
+        null=True,
         on_delete=models.CASCADE,
         related_name='virtual_problems'
     )
@@ -79,9 +105,11 @@ class VirtualProblem(models.Model):
         Problem,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         related_name='virtual'
     )
+    order = models.IntegerField(default=0)
+    color = models.CharField(max_length=50,default='')
 
     def __str__(self):
         return self.description

@@ -1,10 +1,63 @@
 from ninja import Schema
 from typing import Optional, List
 from datetime import date, datetime
+from uuid import UUID
 
-# Contest 基础输出（列表 / 详情用)
+# ================= 用户组相关 (UserGroup) =================
+
+class UserGroupIn(Schema):
+    name: str
+    description: Optional[str] = None
+
+class UserGroupOut(Schema):
+    id: UUID
+    name: str
+    description: Optional[str]
+    creator_id: UUID 
+    created_at: datetime
+    member_count: int = 0
+
+class GroupAddMembersIn(Schema):
+    user_ids: List[UUID]
+
+# ================= 虚拟题目相关 (VirtualProblem) =================
+
+class VirtualProblemIn(Schema):
+    name:str
+    description: str
+    order:int
+    color:Optional[str]=None
+
+class VirtualProblemOut(Schema):
+    id: UUID
+    name:str
+    contest_id: UUID
+    description: str
+    author_id: UUID
+    created_at: datetime
+    real_problem_id: Optional[UUID] = None
+    order: Optional[int] =None
+    color:Optional[str] = None
+
+class VirtualProblemBindIn(Schema):
+    real_problem_id: UUID
+
+# ================= 竞赛相关 (Contest) =================
+
+class ContestIn(Schema):
+    title: str
+    prepare_start_time: date
+    prepare_end_time: date
+    contest_start_time: date
+    contest_end_time: date
+    notice: Optional[str] = ''
+    status: int = 0
+    privite_permission: int = 0  # 对应模型中的拼写错误
+    freeze_time: int = 0
+    allowed_group_ids: List[UUID] = [] # 用于创建时关联用户组
+
 class ContestOut(Schema):
-    id: int
+    id: UUID
     title: str
     prepare_start_time: date
     prepare_end_time: date
@@ -16,55 +69,21 @@ class ContestOut(Schema):
     freeze_time: int
     created_at: datetime
     updated_at: datetime
-    dept_id: int
+    creator_id: UUID
+    creator_name: Optional[str] = None  # 在 API 中通过 obj.creator.username 获取
+    allowed_group_ids: List[UUID] = []
 
-# Contest 创建 / 更新
-class ContestIn(Schema):
+# 用于竞赛列表（不带详情，减少数据量）
+class ContestListOut(Schema):
+    id: UUID
     title: str
+    status: int
     prepare_start_time: date
     prepare_end_time: date
     contest_start_time: date
     contest_end_time: date
-    notice: Optional[str] = ''
-    privite_permission: int = 0
-    freeze_time: int = 0
-    dept_id:Optional[int] = None
+    creator_name: Optional[str] = None
 
-# ContestProblem（比赛-题目关系）
-# 输出 schema
-class ContestProblemOut(Schema):
-    id: int
-    problem_id: int
-    order: int
-    color: str
-    alias: str
-
-# 创建 / 编辑
-class ContestProblemIn(Schema):
-    problem_id: int
-    order: int
-    color: str
-    alias: str
-
-# VirtualProblem（虚拟题目）
-# 输出 schema（核心）
-class VirtualProblemOut(Schema):
-    id: int
-    contest_id: int
-    description: str
-    author_id: int
-    created_at: datetime
-    real_problem_id: Optional[int]
-
-# 创建虚拟题（创建比赛时用）
-class VirtualProblemIn(Schema):
-    description: str
-
-# 虚拟题转正（绑定真实题）
-class VirtualProblemBindIn(Schema):
-    real_problem_id: int
-
-# 组合型 schema
+# 用于竞赛详情（嵌套题目和虚拟题目）
 class ContestDetailOut(ContestOut):
-    problems: List[ContestProblemOut]
-    virtual_problems: List[VirtualProblemOut]
+    virtual_problems: List[VirtualProblemOut] = []
