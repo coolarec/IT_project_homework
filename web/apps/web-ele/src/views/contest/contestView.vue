@@ -29,8 +29,8 @@
         <el-table-column label="起止时间" width="340">
           <template #default="{ row }">
             <div class="text-xs text-slate-500">
-              <p>起：{{ row.start_time }}</p>
-              <p>止：{{ row.end_time }}</p>
+              <p>起：{{ row.contest_start_time }}</p>
+              <p>止：{{ row.contest_end_time }}</p>
             </div>
           </template>
         </el-table-column>
@@ -69,8 +69,8 @@
 
         <el-row :gutter="20">
           <el-col :span="24">
-            <el-form-item label="起止时间" required>
-              <el-date-picker v-model="form.dateRange" type="datetimerange" range-separator="至" start-placeholder="开始时间"
+            <el-form-item label="比赛起止时间" required>
+              <el-date-picker v-model="contestRange" type="datetimerange" range-separator="至" start-placeholder="开始时间"
                 end-placeholder="结束时间" value-format="YYYY-MM-DD HH:mm:ss" class="!w-full" />
             </el-form-item>
           </el-col>
@@ -87,8 +87,9 @@
               <el-radio :label="false">私有 (指定用户组)</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item v-if="!form.is_public" label="关联用户组">
-            <el-select v-model="form.group_id" placeholder="选择参赛用户组" class="w-full">
+          <el-form-item label="允许编辑信息的出题组" v-if="!form.is_public">
+            <el-select v-model="form.allowed_group_ids" multiple collapse-tags collapse-tags-tooltip
+              placeholder="请选择一个或多个用户组" class="w-full">
               <el-option v-for="group in groupOptions" :key="group.id" :label="group.name" :value="group.id" />
             </el-select>
           </el-form-item>
@@ -108,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { Search, Plus } from '@element-plus/icons-vue';
 import {
   ElMessage, ElMessageBox, ElDialog, ElInput, ElOption, ElForm,
@@ -122,8 +123,11 @@ import {
   deleteContestApi,
   getGroupListApi, // 假设已有
   type ContestListItem,
-  type UserGroup
+  type UserGroup,
+  type ContestCreateInput
 } from '#/api/contest';
+import type { UUID } from 'crypto';
+import { router } from '#/router';
 
 const loading = ref(false);
 const submitting = ref(false);
@@ -135,12 +139,34 @@ const groupOptions = ref<UserGroup[]>([]);
 const dialogVisible = ref(false);
 const dialogType = ref<'create' | 'edit'>('create');
 const currentId = ref('');
-const form = reactive({
+const form = reactive<ContestCreateInput>({
   title: '',
-  dateRange: [] as string[],
+  contest_start_time: '',
+  contest_end_time: '',
   description: '',
-  is_public: true,
-  group_id: ''
+  freeze_time: 3600,
+  is_public: false,
+  allowed_group_ids: [] as UUID[]
+});
+
+const contestRange = computed({
+  get() {
+    // 如果两个时间都有值，返回数组；否则返回空数组
+    if (form.contest_start_time && form.contest_end_time) {
+      return [form.contest_start_time, form.contest_end_time];
+    }
+    return [];
+  },
+  set(val: string[] | null) {
+    // 当用户选择时间或清空时间时触发
+    if (val && val.length === 2) {
+      form.contest_start_time = val[0]!;
+      form.contest_end_time = val[1]!;
+    } else {
+      form.contest_start_time = '';
+      form.contest_end_time = '';
+    }
+  }
 });
 
 // 获取数据
@@ -161,8 +187,13 @@ const fetchList = async () => {
 // 状态判断
 const getStatusTag = (row: any) => {
   const now = new Date().getTime();
-  const start = new Date(row.start_time).getTime();
-  const end = new Date(row.end_time).getTime();
+  const pstart = new Date(row.prepare_start_time).getTime();
+  const pend = new Date(row.prepare_end_time).getTime();
+
+  const start = new Date(row.contest_start_time).getTime();
+  const end = new Date(row.contest_end_time).getTime();
+  if (now < pstart) return 'pending';
+  if (now < pend) return 'prepareing';
   if (now < start) return 'info';
   if (now > end) return 'danger';
   return 'success';
@@ -183,32 +214,30 @@ const openDialog = (type: 'create' | 'edit', row?: any) => {
   if (type === 'edit' && row) {
     currentId.value = row.id;
     form.title = row.title;
-    form.dateRange = [row.start_time, row.end_time];
+    form.contest_start_time=row.contest_start_time;
+    form.contest_end_time=row.contest_end_time;
     form.description = row.description;
     form.is_public = row.is_public;
-    form.group_id = row.group_id;
+    form.allowed_group_ids = row.allowed_group_ids;
   } else {
     Object.assign(form, {
       title: '',
-      dateRange: [],
+      contest_start_time: '',
+      contest_end_time: '',
       description: '',
-      is_public: true,
-      group_id: ''
+      is_public: 0,
+      freeze_time: 3600,
+      allowed_group_ids: [] as UUID[]
     });
   }
   dialogVisible.value = true;
 };
 
 const handleSubmit = async () => {
-  if (!form.title || form.dateRange.length < 2) {
-    return ElMessage.warning('请填写完整信息');
-  }
   submitting.value = true;
   try {
     const payload = {
       ...form,
-      start_time: form.dateRange[0],
-      end_time: form.dateRange[1]
     };
     if (dialogType.value === 'create') {
       await createContestApi(payload);
@@ -236,19 +265,11 @@ const handleDelete = (row: any) => {
 
 const manageProblems = (row: any) => {
   // 跳转到题目选择界面
+  router.push(`/contest/contestDetail?id=${row.id}`)
   ElMessage.info('正在进入题目管理...');
 };
 
 onMounted(fetchList);
-
-// 彻底解决之前白屏隐患的清理工作
-onBeforeUnmount(() => {
-  dialogVisible.value = false;
-  document.body.style.overflow = '';
-  document.body.classList.remove('el-popup-parent--hidden');
-  const modals = document.querySelectorAll('.v-modal');
-  modals.forEach(m => m.remove());
-});
 </script>
 
 <style scoped>

@@ -5,15 +5,19 @@ from ninja import Router
 from ninja.errors import HttpError
 from typing import Optional
 from django.db.models import Count
+from django.db import transaction
+from django.db.models import Q
+from ninja import Query
 
+from problem.models import Problem
 from .models import Contest, UserGroup, VirtualProblem
 from .schemas import (
     UserGroupIn, UserGroupOut, 
     ContestIn, ContestOut, ContestListOut, ContestDetailOut,
     VirtualProblemIn, VirtualProblemBindIn,
-    VirtualProblemOut, GroupAddMembersIn
+    VirtualProblemOut, GroupAddMembersIn,ContestUpdteIn,ContestDetailOutWithVp
 )
-from .filters import UserGroupFilter, ContestFilter
+from .filters import ContestFilter
 # 导入你提供的 fu_crud 核心函数
 from common.fu_crud import create, update, delete, retrieve, get_or_none
 
@@ -93,49 +97,69 @@ def remove_group_members(request, id: str, data: GroupAddMembersIn):
 @router.post("/contests", response=ContestOut, summary="创建竞赛")
 def create_contest(request, data: ContestIn):
     payload = data.dict(exclude={'allowed_group_ids'})
-    allowed_group_ids = data.allowed_group_ids
-    instance = create(request, payload, Contest)
-    if allowed_group_ids:
-        instance.allowed_groups.set(allowed_group_ids)
+    
+    with transaction.atomic():
+        instance = Contest.objects.create(
+            **payload,
+            creator=request.auth
+        )
         
+        if data.allowed_group_ids:
+            instance.allowed_groups.set(data.allowed_group_ids)
+            
     return instance
 
 @router.get("/contests", response=List[ContestListOut], summary="获取竞赛列表")
-def list_contests(request, filters: ContestFilter = ContestFilter()):
-    query_set = retrieve(request, Contest, filters)
-    
-    for item in query_set:
-        item.creator_name = item.creator.username
-        
-    return query_set
+def list_contests(request, filters: ContestFilter = Query(...)):
+    user = request.auth
+    qs = Contest.objects.select_related('creator').all()
 
-@router.get("/contests/{id}", response=ContestDetailOut, summary="获取竞赛详情")
-def get_contest_detail(request, id: str):
-    instance = get_or_none(Contest, id=id)
-    if not instance:
-        raise HttpError(404, "竞赛不存在")
-    
-    instance.creator_name = instance.creator.username
-    instance.problems = list(instance.contest_problem.select_related('problem').all())
-    # 补全关联题目中 Schema 需要的 title
-    for cp in instance.problems:
-        cp.title = cp.problem.title
+    if not user.is_superuser:
+        qs = qs.filter(
+            Q(is_public=True) | Q(creator=user) | Q(allowed_groups__members=user)
+        ).distinct()
+
+    if filters.title:
+        qs = qs.filter(title__icontains=filters.title)
+
+    for item in qs:
+        item.creator_name = item.creator.username if item.creator else "未知"
         
-    instance.virtual_problems = list(instance.virtual_problems.all())
+    return qs
+
+# @router.get("/contests/{id}", response=ContestDetailOut, summary="获取竞赛详情")
+# def get_contest_detail(request, id: str):
+#     instance = get_or_none(Contest, id=id)
+#     if not instance:
+#         raise HttpError(404, "竞赛不存在")
     
-    return instance
+#     instance.creator_name = instance.creator.username
+#     instance.problems = list(instance.contest_problem.select_related('problem').all())
+#     # 补全关联题目中 Schema 需要的 title
+#     for cp in instance.problems:
+#         cp.title = cp.problem.title
+        
+#     instance.virtual_problems = list(instance.virtual_problems.all())
+    
+#     return instance
 
 @router.patch("/contests/{id}", response=ContestOut, summary="更新竞赛")
-def update_contest(request, id: str, data: ContestIn):
-    # 处理 M2M 字段更新
-    allowed_group_ids = data.dict().get('allowed_group_ids')
+def update_contest(request, id: str, data: ContestUpdteIn):
+    instance = get_object_or_404(Contest, id=id)
     
-    # 调用 update
-    instance = update(request, id, data, Contest)
+    update_data = data.dict(exclude={'allowed_group_ids'}, exclude_unset=True)
     
-    if allowed_group_ids is not None:
-        instance.allowed_groups.set(allowed_group_ids)
+    allowed_group_ids = data.allowed_group_ids
+    
+    with transaction.atomic():
+        for attr, value in update_data.items():
+            setattr(instance, attr, value)
         
+        instance.save()
+        
+        if allowed_group_ids is not None:
+            instance.allowed_groups.set(allowed_group_ids)
+            
     return instance
 
 @router.delete("/contests/{id}", response=ContestOut, summary="删除竞赛")
@@ -148,15 +172,85 @@ def delete_contest(request, id: str):
 
 # ================= 虚拟题目管理 (VirtualProblem) =================
 
-@router.post("/virtual-problems", response=VirtualProblemOut, summary="创建虚拟题目")
-def create_v_problem(request, data: VirtualProblemIn):
-    # 注意：fu_crud.create 默认注入 sys_creator_id
-    # 请确保 VirtualProblem 模型中有此字段，或在 create 函数中映射 author
-    instance = create(request, data, VirtualProblem)
+@router.get("/contests-vp/{id}", response=ContestDetailOutWithVp)
+def get_contest_detail(request, id: UUID):
+    # 预加载虚拟题目及其关联的真实题目，提升性能
+    contest = get_object_or_404(
+        Contest.objects.select_related('creator').prefetch_related('virtual_problems__real_problem'), 
+        id=id
+    )
+    
+    step_fields = [
+        'step_title_done', 'step_limit_done', 'step_description_done',
+        'step_input_description_done', 'step_output_description_done',
+        'step_example_done', 'step_hint_done', 'step_testcase_done', 'step_solution_done'
+    ]
+
+    vp_list = []
+    # 遍历所有虚拟题目
+    for vp in contest.virtual_problems.all().order_by('order'):
+        data = {
+            "id": vp.id,
+            "name": vp.name,
+            "description": vp.description,
+            "order": vp.order,
+            "color": vp.color,
+            "is_bound": vp.is_bound,
+        }
+        
+        if vp.real_problem:
+            rp = vp.real_problem
+            data["real_problem_id"] = rp.id
+            data["real_problem_title"] = rp.title
+            # 填充进度
+            for field in step_fields:
+                data[field] = getattr(rp, field)
+        else:
+            # 未绑定时进度全为 0
+            for field in step_fields:
+                data[field] = 0
+        vp_list.append(data)
+
+    return {
+        "id": contest.id,
+        "title": contest.title,
+        "description": contest.description,
+        "contest_start_time": contest.contest_start_time,
+        "contest_end_time": contest.contest_end_time,
+        "is_public": contest.is_public,
+        "creator_name": contest.creator.username,
+        "virtual_problems": vp_list
+    }
+
+@router.post("/contests/{id}/virtual-problems", response=VirtualProblemOut)
+def create_virtual_problem(request, id: UUID, data: VirtualProblemIn):
+    contest = get_object_or_404(Contest, id=id)
+    vp = VirtualProblem.objects.create(
+        contest=contest,
+        author=request.auth,
+        **data.dict()
+    )
+    return vp
+
+@router.patch("/virtual-problems/{id}", response=VirtualProblemOut)
+def update_virtual_problem(request, id: UUID, data: VirtualProblemIn):
+    instance = get_object_or_404(VirtualProblem, id=id)
+    for attr, value in data.dict(exclude_unset=True).items():
+        setattr(instance, attr, value)
+    instance.save()
     return instance
 
-@router.patch("/virtual-problems/{id}/bind", response=VirtualProblemOut, summary="虚拟题转正")
-def bind_v_problem(request, id: str, data: VirtualProblemBindIn):
-    # 这里的 data 包含 real_problem_id
-    # 调用 update 并返回实例
-    return update(request, id, data, VirtualProblem)
+@router.patch("/virtual-problems/{id}/bind", response=VirtualProblemOut)
+def bind_virtual_problem(request, id: UUID, data: VirtualProblemBindIn):
+    instance = get_object_or_404(VirtualProblem, id=id)
+    real_p = get_object_or_404(Problem, id=data.real_problem_id)
+    instance.real_problem = real_p
+    instance.is_bound = True
+    instance.save()
+    return instance
+
+@router.delete("/virtual-problems/{id}",response=VirtualProblemOut)
+def delete_virtual_problem(request, id: UUID):
+    instance = get_object_or_404(VirtualProblem, id=id)
+    instance.delete()
+    return instance

@@ -44,26 +44,24 @@ export interface VirtualProblem {
 export interface ContestListItem {
   id: string;
   title: string;
-  status: number;
   contest_start_time: string;
   contest_end_time: string;
   creator_name?: string;
+  is_public:boolean
 }
 
 // 竞赛详情 (对应 ContestDetailOut)
 export interface ContestDetail extends ContestListItem {
-  prepare_start_time: string;
-  prepare_end_time: string;
   notice: string;
-  privite_permission: number; // 沿用后端拼写错误
+  is_public: boolean;
   freeze_time: number;
   created_at: string;
   updated_at: string;
   creator_id: string;
-  dept_id?: string;
-  problems: ContestProblemItem[];
   virtual_problems: VirtualProblem[];
 }
+
+
 
 /**
  * --- API 输入模型 (Input/Payload Interfaces) ---
@@ -71,13 +69,11 @@ export interface ContestDetail extends ContestListItem {
 
 export interface ContestCreateInput {
   title: string;
-  prepare_start_time: string;
-  prepare_end_time: string;
   contest_start_time: string;
   contest_end_time: string;
+  description:string;
   notice?: string;
-  status?: number;
-  privite_permission?: number;
+  is_public: boolean;
   freeze_time?: number;
   allowed_group_ids?: string[]; // 允许访问的用户组UUID列表
 }
@@ -98,6 +94,47 @@ export interface VirtualProblemIn {
 export interface VirtualProblemBindIn {
   real_problem_id: string;
 }
+
+export interface VirtualProblemOut {
+  id: string
+  name: string
+  description: string
+  order: number
+  color: string
+  is_bound: boolean
+  real_problem_id?: string | null
+  real_problem_title?: string | null
+
+  step_title_done: number
+  step_limit_done: number
+  step_description_done: number
+  step_input_description_done: number
+  step_output_description_done: number
+  step_example_done: number
+  step_hint_done: number
+  step_testcase_done: number
+  step_solution_done: number
+}
+
+
+export interface ContestDetailOutWithVp {
+  id: string
+  title: string
+  description: string
+  contest_start_time: string
+  contest_end_time: string
+  is_public: boolean
+  creator_name: string
+  virtual_problems: VirtualProblemOut[]
+}
+
+export interface VirtualProblemIn {
+  name: string
+  description: string
+  order?: number
+  color?: string
+}
+
 
 /**
  * --- API 请求函数 (API Methods) ---
@@ -158,9 +195,9 @@ export function getContestListApi(params?: { keyword?: string }) {
   });
 }
 
-/** 获取竞赛详情 (含题目和虚拟题) */
+/** 获取竞赛详情 */
 export function getContestDetailApi(id: string) {
-  return requestClient.get<ContestDetail>(`/api/contest/contests/${id}`);
+  return requestClient.get<ContestDetailOutWithVp>(`/api/contest/contests/${id}`);
 }
 
 /** 创建竞赛 */
@@ -178,30 +215,30 @@ export function deleteContestApi(id: string) {
   return requestClient.delete<ContestDetail>(`/api/contest/contests/${id}`);
 }
 
-/**
- * --- 竞赛题目关联处理 ---
- */
-
-/** 向竞赛添加题目 */
-export function addProblemToContestApi(data: ContestProblemIn) {
-  return requestClient.post<{ id: string }>('/api/contest/contest-problems', data);
-}
-
-/** 从竞赛中移除题目 */
-export function removeProblemFromContestApi(id: string) {
-  return requestClient.delete<{ id: string }>(`/api/contest/contest-problems/${id}`);
-}
 
 /**
  * --- 虚拟题目处理 (VirtualProblem) ---
  */
 
-/** 创建虚拟题目 */
-export function createVirtualProblemApi(data: VirtualProblemIn) {
-  return requestClient.post<{ id: string }>('/api/contest/virtual-problems', data);
+export function getContestDetailVpApi(id: string) {
+  return requestClient.get<any>(`/api/contest/contests-vp/${id}`);
+}
+/** 创建虚拟题目占位 */
+export function createVirtualProblemApi(contestId: string, data: VirtualProblemIn) {
+  return requestClient.post<{ id: string }>(`/api/contest/contests/${contestId}/virtual-problems`, data);
 }
 
-/** 虚拟题目转正 (绑定真实题目) */
-export function bindVirtualProblemApi(id: string, data: VirtualProblemBindIn) {
+/** 更新虚拟题目属性 */
+export function updateVirtualProblemApi(id: string, data: any) {
+  return requestClient.patch<{ id: string }>(`/api/contest/virtual-problems/${id}`, data);
+}
+
+/** 虚拟题目绑定真实题目 */
+export function bindVirtualProblemApi(id: string, data: { real_problem_id: string }) {
   return requestClient.patch<{ id: string }>(`/api/contest/virtual-problems/${id}/bind`, data);
+}
+
+/** 删除虚拟题目 */
+export function deleteVirtualProblemApi(id: string) {
+  return requestClient.delete<void>(`/api/contest/virtual-problems/${id}`);
 }

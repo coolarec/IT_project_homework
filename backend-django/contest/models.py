@@ -40,31 +40,23 @@ class UserGroup(models.Model):
 
 class Contest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    STATUS_CHOICES = (
-        (0, '未开始'),
-        (1, '报名中'),
-        (2, '进行中'),
-        (3, '已结束'),
-    )
     PRIVATE_PERMISSION = (
         (0, '仅个人可见'),
         (2, '指定用户组可见'),
         (3, '全体可见'),
     )
     title = models.CharField(max_length=200)
-    prepare_start_time = models.DateField()
-    prepare_end_time = models.DateField()
-    contest_start_time = models.DateField()
-    contest_end_time = models.DateField()
+    contest_start_time = models.DateTimeField()
+    contest_end_time = models.DateTimeField()
+    description = models.TextField(blank=True)
     notice = models.TextField(blank=True)
-    status = models.IntegerField(choices=STATUS_CHOICES, default=0)
     allowed_groups = models.ManyToManyField(
         UserGroup,
         blank=True,
         related_name='contests',
         help_text="允许参加的用户组（当权限为指定用户组可见时生效）"
     )
-    privite_permission = models.IntegerField(choices=PRIVATE_PERMISSION, default=0)
+    is_public = models.BooleanField(default=False)
 
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -74,23 +66,18 @@ class Contest(models.Model):
         related_name='created_contests'
     )
     freeze_time = models.IntegerField(default=0)
-    dept = models.ForeignKey(
-        Dept,
-        on_delete=models.CASCADE,
-        related_name='created_contests',
-        null=True
-    )
 
 # 虚拟问题
 class VirtualProblem(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100,default='')
-    contest = models.OneToOneField(
+    contest = models.ForeignKey(
         Contest,
         null=True,
         on_delete=models.CASCADE,
         related_name='virtual_problems'
     )
+    is_bound = models.BooleanField(default=False)
     description = models.CharField(max_length=200)
     author = models.ForeignKey(
         User,
@@ -101,7 +88,7 @@ class VirtualProblem(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
-    real_problem = models.OneToOneField(
+    real_problem = models.ForeignKey(
         Problem,
         null=True,
         blank=True,
