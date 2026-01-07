@@ -12,27 +12,27 @@ import { openWindow } from '@vben/utils';
 
 import { getFileStreamUrl } from '#/api/core/file';
 import NotificationPopup from '#/components/notification/NotificationPopup.vue';
-import { useNotification } from '#/composables/useNotification';
+// import { useNotification } from '#/composables/useNotification';
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
 import LoginForm from '#/views/_core/authentication/login.vue';
 
 // 使用消息通知 composable
-const {
-  notifications,
-  messageUnreadCount,
-  announcements,
-  announcementUnreadCount,
-  activeTab,
-  showDot,
-  markAsRead,
-  markAnnouncementAsRead,
-  markAllAsRead,
-  clearReadMessages,
-  viewAllMessages,
-  init: initNotification,
-  cleanup: cleanupNotification,
-} = useNotification();
+// const {
+//   notifications,
+//   messageUnreadCount,
+//   announcements,
+//   announcementUnreadCount,
+//   activeTab,
+//   showDot,
+//   markAsRead,
+//   markAnnouncementAsRead,
+//   markAllAsRead,
+//   clearReadMessages,
+//   viewAllMessages,
+//   init: initNotification,
+//   cleanup: cleanupNotification,
+// } = useNotification();
 
 const userStore = useUserStore();
 const authStore = useAuthStore();
@@ -41,11 +41,11 @@ const { destroyWatermark, updateWatermark } = useWatermark();
 
 // 初始化消息通知
 onMounted(() => {
-  initNotification();
+  // initNotification();
 });
 
 onUnmounted(() => {
-  cleanupNotification();
+  // cleanupNotification();
 });
 
 const menus = computed(() => [
@@ -90,29 +90,29 @@ async function handleLogout() {
   await authStore.logout(false);
 }
 
-function handleNoticeClear() {
-  clearReadMessages();
-}
+// function handleNoticeClear() {
+//   clearReadMessages();
+// }
 
-function handleMakeAll() {
-  markAllAsRead();
-}
+// function handleMakeAll() {
+//   markAllAsRead();
+// }
 
-function handleNoticeRead(item: any) {
-  markAsRead(item);
-}
+// function handleNoticeRead(item: any) {
+//   markAsRead(item);
+// }
 
-function handleAnnouncementRead(item: any) {
-  markAnnouncementAsRead(item);
-}
+// function handleAnnouncementRead(item: any) {
+//   markAnnouncementAsRead(item);
+// }
 
-function handleViewAll() {
-  viewAllMessages();
-}
+// function handleViewAll() {
+//   viewAllMessages();
+// }
 
-function handleTabChange(tab: 'announcement' | 'message') {
-  activeTab.value = tab;
-}
+// function handleTabChange(tab: 'announcement' | 'message') {
+//   activeTab.value = tab;
+// }
 watch(
   () => ({
     enable: preferences.app.watermark,
@@ -147,7 +147,7 @@ watch(
         @logout="handleLogout"
       />
     </template>
-    <template #notification>
+   <!-- <template #notification>
       <NotificationPopup
         :dot="showDot"
         :notifications="notifications"
@@ -163,6 +163,7 @@ watch(
         @update:active-tab="handleTabChange"
       />
     </template>
+    -->
     <template #extra>
       <AuthenticationLoginExpiredModal
         v-model:open="accessStore.loginExpired"
