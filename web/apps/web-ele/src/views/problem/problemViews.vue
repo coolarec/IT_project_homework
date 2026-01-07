@@ -1,18 +1,19 @@
 <template>
   <div class="p-4  min-h-screen">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+
+      <div>
+        <h1 class="text-2xl font-bold ">题目管理</h1>
+        <p class=" text-sm mt-1">管理个人题目及公共题目</p>
+
+      </div>
+      <!-- <el-button type="primary" @click="fetchList">刷新列表</el-button> -->
+      <el-input v-model="keyword" style="width: 240px" class="my-2" placeholder="请输入搜索关键词" :suffix-icon="Search" />
+    </div>
+
     <el-card shadow="never" class="rounded-xl border-none">
-      <template #header>
-        <div class="flex justify-between items-center">
-          <span class="text-xl font-bold">题目管理库</span>
-          <el-button type="primary" @click="fetchList">刷新列表</el-button>
-        </div>
-      </template>
-
-      <el-input v-model="keyword" style="width: 240px" class="my-2" placeholder="请输入提示词" :suffix-icon="Search" />
-
-      <!-- 题目表格 -->
       <el-table :data="tableData" v-loading="loading" style="width: 100%" stripe>
-        <!-- <el-table-column prop="id" label="ID" width="80" /> -->
+        <el-table-column type="index" label="#" width="60" align="center" />
         <el-table-column prop="title" label="题目名称" min-width="200">
           <template #default="{ row }">
             <span class="font-bold">{{ row.title }}</span>
@@ -63,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch,nextTick } from 'vue';
+import { ref, reactive, onMounted, watch, nextTick } from 'vue';
 import {
   ElDrawer, ElTable, ElTableColumn,
   ElCard, ElRate, ElButton, ElTag, ElInput
@@ -112,7 +113,7 @@ watch(
   }
 )
 
-onMounted(async()=>{
+onMounted(async () => {
   await nextTick();
   fetchList()
 }
@@ -144,37 +145,16 @@ const openEditor = (row: ProblemListItem) => {
   background-color: #f8f9fa;
 }
 
-:deep(.el-drawer__header) {
-  margin-bottom: 0;
-  padding: 20px;
-  font-weight: bold;
-  border-bottom: 1px solid #eee;
-}
-
-:deep(.el-upload-dragger) {
-  width: 190px;
-  height: 190px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-.upload :deep(.el-icon) {
-  font-size: 48px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /* 水平居中 */
-  justify-content: center;
-  /* 垂直居中 */
-}
-
-:deep(.el-upload-list__item-name) {
-  max-width: 190px;
-}
 
 .example-box {
   border-left: 4px solid #409eff;
+}
+
+:deep(.el-card__body) {
+  padding: 0;
+}
+
+:deep(.el-table) {
+  border-radius: 0 0 12px 12px;
 }
 </style>

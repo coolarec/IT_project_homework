@@ -4,8 +4,8 @@
       <!-- 页面头部 -->
       <div class="flex justify-between items-center mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-gray-800">创建新题目</h1>
-          <p class="text-gray-500">发布题目到题库，包含描述、样例及权限设置</p>
+          <h1 class="text-2xl font-bold">创建新题目</h1>
+          <p >发布题目到题库，包含描述、样例及权限设置</p>
         </div>
         <el-button type="primary" size="large" :loading="loading" @click="handleSubmit">
           <el-icon class="mr-1">
@@ -186,8 +186,9 @@ const tagOptions = ref<Tag[]>([]);
 const content = ["未完成", "创作中", "已完成"]
 const isAllAccepted = computed(() => {
   // 检查数组中的每一项，只有全部返回 true，结果才为 true
-  return autoSteps.every(item => form[item.step] === 2)  && form['step_limit_done'] === 2;
+  return autoSteps.every(item => form[item.step] === 2) && form['step_limit_done'] === 2 && form['step_example_done'] === 2;
 });
+
 
 const form = reactive<ProblemDetail>({
   title: '',
@@ -197,8 +198,8 @@ const form = reactive<ProblemDetail>({
   analysis: '',
   difficulty: 3,
   is_public: false,
-  time_limit: 0,
-  memory_limit: 0,
+  time_limit: 1000,
+  memory_limit: 32768,
   tags: [] as Tag[],
   examples: [{ input_data: '', output_data: '' }],
   step_title_done: 0,
@@ -227,8 +228,8 @@ const stepList = [
   { label: '题目描述', key: 'step_description_done' },
   { label: '输入描述', key: 'step_input_description_done' },
   { label: '输出描述', key: 'step_output_description_done' },
+  { label: '测试样例', key: 'step_example_done'},
   { label: '提示（如果有的话）', key: 'step_hint_done' },
-
 ] as const;
 
 
@@ -267,6 +268,16 @@ autoSteps.forEach(({ field, step }) => {
   );
 });
 
+watch(
+  () => form.examples,
+  (list) => {
+    form.step_example_done = list.some(
+      e => e.input_data.trim() || e.output_data.trim()
+    ) ? 1 : 0
+  },
+  { deep: true }
+)
+
 const rules = {
   title: [{ required: true, message: '请输入题目标题', trigger: 'blur' }],
   description: [{ required: true, message: '请输入题目描述', trigger: 'blur' }]
@@ -279,6 +290,7 @@ onMounted(async () => {
     console.error('加载标签失败');
   }
 });
+const isDark = computed(()=>{return document.documentElement.classList.contains('dark')?true:false})
 
 const addExample = () => form.examples.push({ input_data: '', output_data: '' });
 const removeExample = (idx: number) => form.examples.splice(idx, 1);
@@ -301,7 +313,6 @@ const handleSubmit = async () => {
     }
   });
 };
-const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 watch(
   // 同时监听这两个字段
   () => [form.time_limit, form.memory_limit],

@@ -1,17 +1,17 @@
 <template>
-  <div class="p-6 bg-slate-50 min-h-screen" v-loading="loading">
+  <div class="p-6 min-h-screen" v-loading="loading">
     <!-- 1. 竞赛头部概览卡片 -->
     <el-card shadow="never" class="mb-6 rounded-xl border-none">
       <div class="flex justify-between items-start">
         <div class="space-y-2">
           <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold text-slate-800">{{ contest?.title || '加载中...' }}</h1>
+            <h1 class="text-2xl font-bold ">{{ contest?.title || '加载中...' }}</h1>
             <el-tag :type="contest?.is_public ? 'success' : 'warning'" effect="dark">
               {{ contest?.is_public ? '全体公开' : '指定小组' }}
             </el-tag>
           </div>
-          <p class="text-slate-500 max-w-2xl text-sm">{{ contest?.description || '暂无比赛详细描述' }}</p>
-          <div class="flex gap-6 mt-4 text-xs text-slate-400">
+          <p class=" max-w-2xl text-sm">{{ contest?.description || '暂无比赛详细描述' }}</p>
+          <div class="flex gap-6 mt-4 text-xs ">
             <span class="flex items-center gap-1">
               <el-icon>
                 <Clock />
@@ -36,8 +36,8 @@
     <el-card shadow="never" class="rounded-xl border-none">
       <template #header>
         <div class="flex justify-between items-center">
-          <span class="font-bold text-lg text-slate-700">题目准备进度</span>
-          <div class="flex gap-4 text-[12px] text-slate-400 font-normal">
+          <span class="font-bold text-lg ">题目准备进度</span>
+          <div class="flex gap-4 text-[12px] font-normal">
             <span class="flex items-center gap-1"><i class="matrix-dot bg-slate-200"></i> 未开始</span>
             <span class="flex items-center gap-1"><i class="matrix-dot bg-amber-400"></i> 进行中</span>
             <span class="flex items-center gap-1"><i class="matrix-dot bg-emerald-500"></i> 已完成</span>
@@ -46,15 +46,20 @@
       </template>
 
       <el-table :data="contest?.virtual_problems" style="width: 100%" border stripe>
+        <el-table-column label="#" width="60" align="center">
+          <template #default="{ $index }">
+            {{ String.fromCharCode(65 + $index) }}
+          </template>
+        </el-table-column>
         <el-table-column label="题目名" width="120" align="center">
 
           <template #default="{ row }">
 
             <div class="flex flex-col items-center gap-1">
-              <el-tag effect="dark" class="!border-none font-bold px-4">
+              <el-tag effect="dark" class="!border-none font-bold px-4" :color="row.color">
                 {{ row.name || '?' }}
               </el-tag>
-              <span class="text-[10px] text-slate-400">排序: {{ row.order }}</span>
+              <span class="text-[10px] ">排序: {{ row.order }}</span>
             </div>
           </template>
         </el-table-column>
@@ -62,7 +67,6 @@
         <!-- 虚拟描述 -->
         <el-table-column prop="description" label="题目知识点" min-width="160" />
 
-        <!-- 核心：准备进度矩阵 -->
         <el-table-column label="关联真实题目及准备进度" min-width="380">
           <template #default="{ row }">
             <div class="flex flex-col gap-2 py-1">
@@ -170,13 +174,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ElMessage, ElMessageBox, ElTooltip, ElDialog, ElButton,
   ElForm, ElFormItem, ElOption, ElSelect, ElIcon,
   ElColorPicker, ElInput, ElTable, ElTableColumn,
-  ElCard, ElInputNumber
+  ElCard, ElInputNumber, ElTag
 } from 'element-plus';
 import { Clock, User, Plus, Check, InfoFilled } from '@element-plus/icons-vue';
 
@@ -354,14 +358,6 @@ const goProblemEditor = (id: string) => {
 
 onMounted(loadDetail);
 
-// Vben 5 彻底清理防止 Teleport 导致的白屏残留
-onBeforeUnmount(() => {
-  vpDialog.visible = false;
-  bindDialog.visible = false;
-  document.body.style.overflow = '';
-  document.body.classList.remove('el-popup-parent--hidden');
-  document.querySelectorAll('.v-modal').forEach(m => m.remove());
-});
 </script>
 
 <style scoped>
@@ -406,13 +402,11 @@ onBeforeUnmount(() => {
 }
 
 :deep(.el-table) {
-  --el-table-header-bg-color: #f8fafc;
   border-radius: 12px;
   overflow: hidden;
 }
 
 :deep(.el-table .cell) {
   overflow: visible;
-  /* 让 Tooltip 箭头显示更自然 */
 }
 </style>

@@ -441,6 +441,7 @@ def get_user_manager(request, data: UserSchemaGetNameIn):
 def get_user_avatar(request, user_id: str):
     """获取用户头像信息"""
     user = get_object_or_404(User, id=user_id)
+    print(user)
     return user
 
 

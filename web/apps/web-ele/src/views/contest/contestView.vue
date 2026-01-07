@@ -1,10 +1,10 @@
 <template>
-  <div class="min-h-screen bg-slate-50 p-6">
+  <div class="min-h-screen  p-6">
     <!-- 页眉区域 -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">比赛管理</h1>
-        <p class="text-slate-500 text-sm mt-1">创建、编辑及监控所有竞赛活动</p>
+        <h1 class="text-2xl font-bold ">比赛管理</h1>
+        <p class=" text-sm mt-1">创建、编辑及监控所有竞赛活动</p>
       </div>
 
       <div class="flex items-center gap-3">
@@ -20,9 +20,11 @@
     <!-- 列表区域 -->
     <el-card shadow="never" class="rounded-xl border-none">
       <el-table :data="tableData" v-loading="loading" stripe style="width: 100%">
+        <el-table-column type="index" label="#" width="60" align="center" />
+
         <el-table-column prop="title" label="比赛标题" min-width="200">
           <template #default="{ row }">
-            <span class="font-bold text-slate-700">{{ row.title }}</span>
+            <span class="font-bold">{{ row.title }}</span>
           </template>
         </el-table-column>
 
@@ -114,7 +116,7 @@ import { Search, Plus } from '@element-plus/icons-vue';
 import {
   ElMessage, ElMessageBox, ElDialog, ElInput, ElOption, ElForm,
   ElFormItem, ElRadio, ElSelect, ElRadioGroup, ElRow,
-  ElCol, ElTable, ElTableColumn, ElButton, ElCard, ElDatePicker
+  ElCol, ElTable, ElTableColumn, ElButton, ElCard, ElDatePicker,ElTag
 } from 'element-plus';
 import {
   getContestListApi,
@@ -192,8 +194,8 @@ const getStatusTag = (row: any) => {
 
   const start = new Date(row.contest_start_time).getTime();
   const end = new Date(row.contest_end_time).getTime();
-  if (now < pstart) return 'pending';
-  if (now < pend) return 'prepareing';
+  if (now < pstart) return 'info';
+  if (now < pend) return 'info';
   if (now < start) return 'info';
   if (now > end) return 'danger';
   return 'success';
@@ -201,8 +203,8 @@ const getStatusTag = (row: any) => {
 
 const getStatusText = (row: any) => {
   const now = new Date().getTime();
-  const start = new Date(row.start_time).getTime();
-  const end = new Date(row.end_time).getTime();
+  const start = new Date(row.contest_start_time).getTime();
+  const end = new Date(row.contest_end_time).getTime();
   if (now < start) return '未开始';
   if (now > end) return '已结束';
   return '进行中';
@@ -214,8 +216,8 @@ const openDialog = (type: 'create' | 'edit', row?: any) => {
   if (type === 'edit' && row) {
     currentId.value = row.id;
     form.title = row.title;
-    form.contest_start_time=row.contest_start_time;
-    form.contest_end_time=row.contest_end_time;
+    form.contest_start_time = row.contest_start_time;
+    form.contest_end_time = row.contest_end_time;
     form.description = row.description;
     form.is_public = row.is_public;
     form.allowed_group_ids = row.allowed_group_ids;
@@ -266,7 +268,6 @@ const handleDelete = (row: any) => {
 const manageProblems = (row: any) => {
   // 跳转到题目选择界面
   router.push(`/contest/contestDetail?id=${row.id}`)
-  ElMessage.info('正在进入题目管理...');
 };
 
 onMounted(fetchList);
@@ -278,7 +279,6 @@ onMounted(fetchList);
 }
 
 :deep(.el-table) {
-  --el-table-header-bg-color: #f8fafc;
   border-radius: 0 0 12px 12px;
 }
 </style>

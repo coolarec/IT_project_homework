@@ -11,7 +11,7 @@
         </el-button>
         <div class="flex flex-col items-center">
           <h1 class="text-2xl font-bold ">编辑题目</h1>
-          <p class="text-gray-500">修改题目详细信息、样例及限制设置</p>
+          <p >修改题目详细信息、样例及限制设置</p>
         </div>
         <el-button type="primary" size="large" @click="handleSubmit">
           <el-icon class="mr-1">
@@ -226,7 +226,7 @@ const form = reactive<ProblemUpdateIn>({
 });
 const isAllAccepted = computed(() => {
   // 检查数组中的每一项，只有全部返回 true，结果才为 true
-  return autoSteps.every(item => form[item.step] === 2) && form['step_limit_done'] === 2;
+  return autoSteps.every(item => form[item.step] === 2) && form['step_limit_done'] === 2 && form['step_example_done'] === 2;
 });
 const rules = {
   title: [{ required: true, message: '请输入题目标题', trigger: 'blur' }],
@@ -239,8 +239,20 @@ const stepList = [
   { label: '时空限制', key: 'step_limit_done' },
   { label: '输入描述', key: 'step_input_description_done' },
   { label: '输出描述', key: 'step_output_description_done' },
+  { label: '样例', key: 'step_example_done' },
   { label: '提示（如果有的话）', key: 'step_hint_done' },
 ] as const;
+
+watch(
+  () => form.examples,
+  (list) => {
+    if(form.step_example_done) return ;
+    form.step_example_done = list?.some(
+      e => e.input_data.trim() || e.output_data.trim()
+    ) ? 1 : 0
+  },
+  { deep: true }
+)
 
 const autoSteps = [
   { field: 'title', step: 'step_title_done' },
@@ -489,9 +501,6 @@ const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   margin-bottom: 20px;
 }
 
-:deep(.el-card__header) {
-  border-bottom: 1px solid #f2f2f2;
-}
 
 .font-mono :deep(textarea) {
   font-family: 'Courier New', Courier, monospace;

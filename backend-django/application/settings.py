@@ -49,7 +49,8 @@ INSTALLED_APPS = [
     'core',
     'scheduler',
     'problem',
-    'contest'
+    'contest',
+    'neo4j'
 ]
 
 MIDDLEWARE = [

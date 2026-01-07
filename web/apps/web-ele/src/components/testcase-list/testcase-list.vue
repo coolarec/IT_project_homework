@@ -2,41 +2,79 @@
   <!-- v-if="drawerType === 'testcase'" -->
 
   <el-form label-position="top">
-    <div class="grid grid-cols-2 gap-4 justify-items-center items-start">
-      <!-- 输入文件 -->
-      <el-form-item label="输入文件 (.in)">
-        <el-upload action="#" :auto-upload="false" :limit="1" :on-change="onInputFileChange" drag>
-          <el-icon class="el-icon--upload" :size="100">
-            <upload-filled />
-          </el-icon>
-          <div class="el-upload__text">
-            <em>上传</em>
-          </div>
-          <!-- <el-button type="primary">选择 IN 文件</el-button> -->
-        </el-upload>
-
-      </el-form-item>
-
-      <!-- 输出文件 -->
-      <el-form-item label="对应输出文件 (.out)">
-        <el-upload action="#" :auto-upload="false" :limit="1" :on-change="onOutputFileChange" drag>
-          <!-- <el-button type="success">选择 OUT 文件</el-button> -->
-          <el-icon class="el-icon--upload" :size="100">
-            <upload-filled />
-          </el-icon>
-          <div class="el-upload__text">
-            <em>上传文件</em>
-          </div>
-        </el-upload>
-      </el-form-item>
-    </div>
-
-    <el-form-item label="该点分值权重">
-
-      <el-input-number v-model="testCaseForm.weight" :min="1" />
+    <!-- 合并为一个上传框 -->
+    <el-form-item label="批量上传测试点 (同时选择多个 .in 和 .out 文件)">
+      <el-upload class="upload-demo w-full" action="#" :auto-upload="false" :on-change="onFileChange"
+        :on-remove="onFileRemove" :file-list="fileList" multiple drag accept=".in,.out">
+        <el-icon class="el-icon--upload">
+          <upload-filled />
+        </el-icon>
+        <div class="el-upload__text">
+          将所有文件拖到此处，或 <em>点击上传</em>
+          <div class="text-xs mt-2">系统将自动匹配文件名相同的 .in 和 .out 文件</div>
+        </div>
+      </el-upload>
     </el-form-item>
 
-    <el-button type="primary" class="w-full" @click="submitTestCase">确认上传</el-button>
+<!-- 匹配结果预览区 -->
+<div v-if="fileList.length > 0" class="mt-4 p-4 rounded-xl border border-gray-100 bg-gray-50/50">
+  <div class="flex items-center justify-between mb-3">
+    <h4 class="text-sm font-bold text-gray-700 flex items-center">
+      <el-icon class="mr-2 text-blue-500"><Memo /></el-icon>
+      解析预览
+    </h4>
+    <div class="space-x-2">
+      <el-tag size="small" type="success" effect="light">已就绪: {{ matchedPairs.length }} 组</el-tag>
+      <el-tag v-if="unmatchedFiles.length > 0" size="small" type="danger" effect="light">
+        待完善: {{ unmatchedFiles.length }} 个
+      </el-tag>
+    </div>
+  </div>
+
+  <!-- 滚动区域 -->
+  <el-scrollbar max-height="200px">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <!-- 已匹配成功的卡片 -->
+      <div
+        v-for="pair in matchedPairs"
+        :key="pair.name"
+        class="flex items-center justify-between p-2 bg-white border border-emerald-100 rounded-lg shadow-sm"
+      >
+        <div class="flex items-center overflow-hidden">
+          <el-icon class="text-emerald-500 mr-2"><CircleCheckFilled /></el-icon>
+          <span class="text-xs font-mono text-gray-600 truncate">{{ pair.name }}</span>
+        </div>
+        <div class="flex gap-1 shrink-0">
+          <span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-200">.in</span>
+          <span class="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-200">.out</span>
+        </div>
+      </div>
+
+      <!-- 未匹配的错误卡片 -->
+      <div
+        v-for="miss in unmatchedFiles"
+        :key="miss"
+        class="flex items-center justify-between p-2 bg-red-50/50 border border-red-100 rounded-lg"
+      >
+        <div class="flex items-center overflow-hidden">
+          <el-icon class="text-red-400 mr-2"><WarningFilled /></el-icon>
+          <span class="text-xs font-mono text-red-500 truncate">{{ miss }}</span>
+        </div>
+        <span class="text-[10px] text-red-400 italic">缺失配对</span>
+      </div>
+    </div>
+  </el-scrollbar>
+
+  <!-- 提示信息 -->
+  <div v-if="matchedPairs.length === 0" class="text-center py-4 text-gray-400 text-xs">
+    等待文件解析... 请确保文件名一致（如 1.in 和 1.out）
+  </div>
+</div>
+
+    <el-button type="primary" class="w-full" :loading="loading" :disabled="matchedPairs.length === 0"
+      @click="submitTestCase">
+      确认上传 {{ matchedPairs.length }} 组测试点
+    </el-button>
   </el-form>
 
 
@@ -82,7 +120,10 @@
 
     <el-table-column prop="size" label="文件总大小" min-width="150">
       <template #default="{ row }">
-        <span class="font-bold">{{ row.size }}</span>
+        <span class="font-bold">
+          <!-- 假设 row.size 是字节 (B) -->
+          {{ (row.size / (1024 * 1024)).toFixed(2) }} MB
+        </span>
       </template>
     </el-table-column>
 
@@ -97,7 +138,7 @@
 
 </template>
 <script lang="ts" setup>
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { ElMessageBox, ElInputNumber, ElUpload, ElForm, ElTable, ElTableColumn, ElMessage, ElButton, ElFormItem, ElIcon, ElTooltip } from 'element-plus';
 import { uploadTestCaseApi, getTestCaseApi, deleteTestCaseApi, type TestCase, updateProblemApi, getProblemDetailApi, type ProblemUpdateIn } from '#/api/problem';
 import { UploadFilled } from '@element-plus/icons-vue'
@@ -113,10 +154,10 @@ const origin = ref<number>(0);
 const content = ["未完成", "创作中", "已完成"]
 
 const testcaseData = ref<TestCase[]>([])
-const testCaseForm = reactive({
-  weight: 1,
-  inputFile: null as any,
-  outputFile: null as any
+
+const fileList = ref<any[]>([]);
+const testCaseForm = ref({
+  weight: 10
 });
 
 watch(
@@ -134,41 +175,103 @@ watch(
 
 const props = defineProps<Props>();
 
-// 处理输入文件
-const onInputFileChange = (file: any) => {
-  testCaseForm.inputFile = file.raw;
+// 处理文件变化
+const onFileChange = (file: any, files: any[]) => {
+  fileList.value = files;
 };
 
-// 处理输出文件
-const onOutputFileChange = (file: any) => {
-  testCaseForm.outputFile = file.raw;
+// 处理删除文件
+const onFileRemove = (file: any, files: any[]) => {
+  fileList.value = files;
 };
+
+// 提取文件名逻辑（封装成函数复用）
+const getFileNameAndExt = (filename: string) => {
+  const lastDotIndex = filename.lastIndexOf('.');
+  if (lastDotIndex <= 0) return { name: '', ext: '' }; // 忽略隐藏文件或无后缀文件
+  return {
+    name: filename.substring(0, lastDotIndex),
+    ext: filename.substring(lastDotIndex + 1).toLowerCase()
+  };
+};
+
+// 1. 自动匹配文件对 (用于提交)
+const matchedPairs = computed(() => {
+  const groups: Record<string, { in?: any; out?: any }> = {};
+
+  fileList.value.forEach((f) => {
+    const { name, ext } = getFileNameAndExt(f.name);
+    if (!name) return;
+
+    if (ext === 'in' || ext === 'out') {
+      if (!groups[name]) groups[name] = {};
+      groups[name][ext] = f.raw;
+    }
+  });
+
+  return Object.keys(groups)
+    .filter(name => groups[name]?.in && groups[name]?.out) // 使用可选链 ?.
+    .map(name => ({
+      name,
+      inputFile: groups[name]?.in,
+      outputFile: groups[name]?.out
+    }));
+});
+
+
+// 未能匹配成功的文件（用于提示用户）
+const unmatchedFiles = computed(() => {
+  const groups: Record<string, { in?: boolean; out?: boolean }> = {};
+  fileList.value.forEach(f => {
+    const name = f.name.substring(0, f.name.lastIndexOf('.'));
+    const ext = f.name.substring(f.name.lastIndexOf('.') + 1).toLowerCase();
+    if (!groups[name]) groups[name] = {};
+    if (ext === 'in') groups[name].in = true;
+    if (ext === 'out') groups[name].out = true;
+  });
+  return Object.keys(groups).filter(name => !(groups[name]?.in && groups[name].out));
+});
 
 const submitTestCase = async () => {
-  if (!testCaseForm.inputFile || !testCaseForm.outputFile) {
-    return ElMessage.warning('请同时上传输入和输出文件');
+  if (matchedPairs.value.length === 0) {
+    return ElMessage.warning('没有找到匹配的 .in 和 .out 文件对');
   }
 
-  const fd = new FormData();
-  fd.append('input_file', testCaseForm.inputFile);
-  fd.append('output_file', testCaseForm.outputFile);
-  fd.append('weight', testCaseForm.weight.toString());
-
   loading.value = true;
-  try {
-    // 调用接口
-    await uploadTestCaseApi(props.activeProblemId, fd);
-    ElMessage.success('测试点上传成功并存入文件系统');
-    testcaseData.value = await getTestCaseApi(props.activeProblemId)
+  let successCount = 0;
+  let failCount = 0;
 
-    // 刷新列表逻辑...
+  try {
+    for (const pair of matchedPairs.value) {
+      const fd = new FormData();
+      fd.append('input_file', pair.inputFile);
+      fd.append('output_file', pair.outputFile);
+      fd.append('weight', testCaseForm.value.weight.toString());
+
+      try {
+        await uploadTestCaseApi(props.activeProblemId, fd);
+        successCount++;
+      } catch (e) {
+        console.error(`上传失败: ${pair.name}`, e);
+        failCount++;
+      }
+    }
+
+    if (failCount === 0) {
+      ElMessage.success(`成功上传 ${successCount} 组测试点`);
+    } else {
+      ElMessage.warning(`上传完成。成功: ${successCount}, 失败: ${failCount}`);
+    }
+
+    // 刷新数据
+    testcaseData.value = await getTestCaseApi(props.activeProblemId);
+    fileList.value = []; // 清空上传列表
   } catch (e) {
-    ElMessage.error('上传失败');
+    ElMessage.error('请求过程中发生错误');
   } finally {
     loading.value = false;
   }
 };
-
 // 删除样例
 const delTestcase = async (testCaseId: string) => {
   try {

@@ -114,7 +114,7 @@ onMounted(async () => {
     solutionList.value = await getSolutionsApi(props.activeProblemId)
     // console.log(solutionList.value)
     const detail = await getProblemDetailApi(props.activeProblemId);
-    currentStatus.value = detail.step_testcase_done
+    currentStatus.value = detail.step_solution_done
     origin.value = currentStatus.value
   } catch (e) {
     solutionList.value = []

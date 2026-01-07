@@ -1,5 +1,4 @@
 import { requestClient } from '#/api/request';
-
 /**
  * --- 基础模型定义 (Model Interfaces) ---
  */
@@ -9,8 +8,10 @@ export interface UserGroup {
   name: string;
   description?: string;
   creator_id: string;
+  creator_name: string;
   created_at: string;
   member_count: number;
+  members:UserItem[]
 }
 
 export interface UserGroupIn {
@@ -47,7 +48,7 @@ export interface ContestListItem {
   contest_start_time: string;
   contest_end_time: string;
   creator_name?: string;
-  is_public:boolean
+  is_public: boolean
 }
 
 // 竞赛详情 (对应 ContestDetailOut)
@@ -71,14 +72,14 @@ export interface ContestCreateInput {
   title: string;
   contest_start_time: string;
   contest_end_time: string;
-  description:string;
+  description: string;
   notice?: string;
   is_public: boolean;
   freeze_time?: number;
   allowed_group_ids?: string[]; // 允许访问的用户组UUID列表
 }
 
-export interface ContestUpdateInput extends Partial<ContestCreateInput> {}
+export interface ContestUpdateInput extends Partial<ContestCreateInput> { }
 
 export interface ContestProblemIn {
   problem_id: string;
@@ -136,6 +137,14 @@ export interface VirtualProblemIn {
 }
 
 
+// 接口定义
+export interface UserItem {
+  id: string;
+  name: string;
+  avatar: string; // 初始为 UUID
+  avatarUrl?: string; // 处理后的真实链接
+}
+
 /**
  * --- API 请求函数 (API Methods) ---
  */
@@ -174,9 +183,9 @@ export function addGroupMembersApi(id: string, userIds: string[]) {
 }
 
 /** 从用户组移除成员 */
-export function removeGroupMembersApi(id: string, userIds: string[]) {
+export function removeGroupMembersApi(id: string, user_id: string) {
   return requestClient.delete<UserGroup>(`/api/contest/groups/${id}/members`, {
-    data: { user_ids: userIds } // 根据请求库约定，delete的body通常放在data里
+    data: { user_id: user_id } // 根据请求库约定，delete的body通常放在data里
   });
 }
 
@@ -242,3 +251,7 @@ export function bindVirtualProblemApi(id: string, data: { real_problem_id: strin
 export function deleteVirtualProblemApi(id: string) {
   return requestClient.delete<void>(`/api/contest/virtual-problems/${id}`);
 }
+/**  */
+export function fetchAllUsersInfo (){
+    return requestClient.get<UserItem[]>('/api/contest/allUser/');
+};

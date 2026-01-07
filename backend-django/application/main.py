@@ -14,7 +14,7 @@ from core.router import core_router
 from scheduler.router import scheduler_router
 from problem.api import router as problem_router
 from contest.api import router as contest_router
-
+from n4j.views import router as neo4j_router
 class MyJsonEncoder(NinjaJSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
@@ -28,16 +28,10 @@ class MyJsonRenderer(JSONRenderer):
 
 api = NinjaAPI(auth=[BearerAuth(), ApiKey()], renderer=MyJsonRenderer())
 
-# @api.exception_handler(DjangoValidationError)
-# def service_unavailable(request, exc):
-#     return api.create_response(
-#         request,
-#         {"detail": exc.messages},
-#         status=422,
-#     )
 
 
 api.add_router('/core', core_router)
 api.add_router('/scheduler', scheduler_router)
 api.add_router('/problem', problem_router)
 api.add_router('/contest',contest_router)
+api.add_router('/neo4j',neo4j_router)

@@ -2,7 +2,7 @@ from ninja import Schema
 from typing import Optional, List
 from datetime import date, datetime
 from uuid import UUID
-
+from core.user.user_schema import UserSchemaAvatarOut
 # ================= 用户组相关 (UserGroup) =================
 
 class UserGroupIn(Schema):
@@ -12,13 +12,24 @@ class UserGroupIn(Schema):
 class UserGroupOut(Schema):
     id: UUID
     name: str
-    description: Optional[str]
-    creator_id: UUID 
+    description: Optional[str] = None
+    creator_id: UUID
+    creator_name:Optional[str] = None
     created_at: datetime
     member_count: int = 0
+    members: List[UserSchemaAvatarOut] = []
+
+    # 使用 resolve_ 关键字自定义字段逻辑
+    @staticmethod
+    def resolve_members(obj):
+        # 仅返回前 5 个成员的头像和基本信息，避免数据量过大
+        return obj.members.all()[:5]
 
 class GroupAddMembersIn(Schema):
     user_ids: List[UUID]
+
+class GroupDeleteMembersIn(Schema):
+    user_id: UUID
 
 # ================= 虚拟题目相关 (VirtualProblem) =================
 

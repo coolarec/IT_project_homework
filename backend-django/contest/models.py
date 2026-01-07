@@ -95,6 +95,7 @@ class VirtualProblem(models.Model):
         on_delete=models.CASCADE,
         related_name='virtual'
     )
+    
     order = models.IntegerField(default=0)
     color = models.CharField(max_length=50,default='')
 

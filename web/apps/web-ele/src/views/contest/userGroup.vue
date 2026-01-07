@@ -1,12 +1,12 @@
 <template>
   <!-- 主容器：使用 Tailwind 背景和内边距 -->
-  <div class="min-h-screen bg-slate-50 p-6 ">
+  <div class="min-h-screen  p-6 ">
 
     <!-- 页眉区域 -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
       <div>
-        <h1 class="text-2xl font-bold text-slate-800">用户组管理</h1>
-        <p class="text-slate-500 text-sm mt-1">创建并管理您的参赛名单或权限分组</p>
+        <h1 class="text-2xl font-bold ">用户组管理</h1>
+        <p class=" text-sm mt-1">创建并管理您的参赛名单或权限分组</p>
       </div>
 
       <div class="flex items-center gap-3">
@@ -20,26 +20,63 @@
     </div>
 
     <!-- 表格容器：使用卡片样式 -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 gap-7 my-4 px-4">
+    <div class="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-7 my-4 px-4">
       <!-- 使用 v-for 循环渲染卡片 -->
-      <el-card v-for="item in tableData" :key="item.id" shadow="never" class="h-full">
+      <el-card v-for="item in tableData" :key="item.id" shadow="never" class="h-full !rounded-xl">
         <template #header>
-          <div class="flex justify-between">
-            <div class="font-bold text-lg">{{ item.name }}</div>
+          <div class="flex justify-between items-center">
             <div>
-              <el-button type="info" :icon="Edit" circle @click="openDialog('edit', item)"/>
-              <el-button type="primary" :icon="AddLocation" circle @click="openMemberDialog(item)"/>
-              <el-button type="danger" :icon="Delete" circle @click="handleDelete(item)"/>
-
+              <div class="font-bold text-lg truncate w-40 my-1">{{ item.name }}</div>
+              <p class="text-sm text-gray-500">
+                创建者 {{ item.creator_name || '未知' }}
+              </p>
+            </div>
+            <div class="flex gap-1">
+              <el-button type="info" :icon="Edit" circle size="small" plain @click="openDialog('edit', item)" />
+              <el-button type="primary" :icon="AddLocation" circle size="small" plain @click="openMemberDialog(item)" />
+              <el-button type="danger" :icon="Delete" circle size="small" plain @click="handleDelete(item)" />
             </div>
           </div>
         </template>
 
-        <div class="text-gray-600">
-          <p>成员人数: {{ item.member_count }}</p>
-          <p>描述: {{ item.description }}</p>
-        </div>
+        <div class="space-y-4">
+          <!-- 描述 -->
+          <p class="text-sm text-gray-500 line-clamp-2 h-10">
+            {{ item.description || '暂无描述' }}
+          </p>
 
+          <!-- 成员头像堆叠区 -->
+          <div class="flex items-center justify-between">
+            <div class="flex -space-x-3 overflow-hidden">
+              <!-- 假设 item.members 是后端返回的成员预览数组 -->
+              <!-- 如果后端没给，你可以先循环一个固定长度的占位符测试样式 -->
+              <template v-if="item.members && item.members.length > 0">
+                <el-avatar v-for="(member, index) in item.members.slice(0, 5)" :key="member.id ?? index" :size="32"
+                  :src="member.avatar ? getFileStreamUrl(member.avatar) : ''" class="border-2 border-white">
+                  {{ member.name?.charAt(0) }}
+                </el-avatar>
+              </template>
+
+              <!-- 无成员时的占位 -->
+              <el-avatar v-else :size="32" class="!bg-gray-100 !text-gray-400 border-2 border-white">
+                <el-icon>
+                  <User />
+                </el-icon>
+              </el-avatar>
+
+              <!-- 超过 5 个成员时的省略标记 -->
+              <div v-if="item.member_count > 5"
+                class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 text-gray-500 text-[10px] border-2 border-white z-10">
+                +{{ item.member_count - 5 }}
+              </div>
+            </div>
+
+            <!-- 右侧人数统计 -->
+            <span class="text-xs text-gray-400 font-medium">
+              {{ item.member_count }} 人
+            </span>
+          </div>
+        </div>
       </el-card>
 
     </div>
@@ -66,41 +103,34 @@
     </el-dialog>
 
     <!-- 弹窗：管理成员 -->
-    <el-dialog v-model="memberDialogVisible" title="管理成员" width="440px" class="!rounded-xl" append-to-body destroy-on-close>
-      <div class="p-2">
-        <div class="bg-blue-50 border border-blue-100 rounded-lg p-3 mb-4">
-          <p class="text-blue-700 text-xs leading-relaxed">
-            请在下方输入用户的 <strong>UUID</strong>。如有多个，请使用半角逗号 <code class="bg-white px-1">,</code> 分隔。
-          </p>
-        </div>
-        <el-input v-model="targetUserIds" type="textarea" :rows="5" placeholder="请输入用户 ID..." class="text-sm" />
-      </div>
-      <template #footer>
-        <div class="flex justify-end gap-3 px-2">
-          <el-button class="!rounded-md" @click="memberDialogVisible = false">关闭</el-button>
-          <el-button type="primary" class="!rounded-md" @click="handleAddMembers">添加成员</el-button>
-        </div>
-      </template>
-    </el-dialog>
+    <user-selector v-model:visible="memberSelectorVisible" :id="currentGroupId" :existing-users="currentGroupMembers"
+      @success="fetchList" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, onActivated } from 'vue';
-import { ElMessage, ElMessageBox, ElInput, ElCard, ElButton, ElDialog } from 'element-plus';
-import { Search, Plus,Edit,AddLocation,Delete } from '@element-plus/icons-vue';
+import { ref, onMounted, reactive, computed } from 'vue';
+import {
+  ElMessage, ElMessageBox, ElInput, ElCard, ElButton, ElDialog,
+  ElAvatar, ElIcon
+} from 'element-plus';
+import { Search, Plus, Edit, AddLocation, Delete } from '@element-plus/icons-vue';
 import type { UserGroup, UserGroupIn } from '#/api/contest';
+import userSelector from '#/components/user-selector/user-selector.vue';
 import {
   getGroupListApi,
   createGroupApi,
   updateGroupApi,
   deleteGroupApi,
-  addGroupMembersApi
 } from '#/api/contest';
+import { getFileStreamUrl } from '#/api/core/file';
+import { User } from '@element-plus/icons-vue'; // 记得引入 User 图标
+
 // --- 状态与数据 ---
 const loading = ref(false);
 const tableData = ref<UserGroup[]>([]);
 const searchKeyword = ref('');
+const memberSelectorVisible = ref(false);
 
 // 弹窗控制
 const dialogVisible = ref(false);
@@ -111,9 +141,6 @@ const form = reactive<UserGroupIn>({
   description: ''
 });
 
-// 成员管理
-const memberDialogVisible = ref(false);
-const targetUserIds = ref('');
 
 // --- 逻辑函数 ---
 const fetchList = async () => {
@@ -172,27 +199,24 @@ const handleDelete = (row: UserGroup) => {
   }).catch(() => { });
 };
 
+const currentGroupMembers = computed(() => {
+  // 从大列表 tableData 中找到 id 匹配的那一项
+  const group = tableData.value.find(g => g.id === currentGroupId.value);
+  if (!group || !group.members) return [];
+
+  // 处理头像 URL
+  return group.members.map(member => ({
+    ...member,
+    avatarUrl: member.avatar != null ? getFileStreamUrl(member.avatar) : ''
+  }));
+});
+
 const openMemberDialog = (row: UserGroup) => {
   currentGroupId.value = row.id;
-  targetUserIds.value = '';
-  memberDialogVisible.value = true;
-};
-
-const handleAddMembers = async () => {
-  const ids = targetUserIds.value.split(',').map(id => id.trim()).filter(id => id);
-  if (ids.length === 0) return ElMessage.warning('请输入用户ID');
-  try {
-    await addGroupMembersApi(currentGroupId.value, ids);
-    ElMessage.success('添加成功');
-    memberDialogVisible.value = false;
-    fetchList();
-  } catch (error) {
-    ElMessage.error('添加失败');
-  }
+  memberSelectorVisible.value = true;
 };
 
 onMounted(() => fetchList());
-onActivated(() => fetchList());
 </script>
 
 <style scoped></style>

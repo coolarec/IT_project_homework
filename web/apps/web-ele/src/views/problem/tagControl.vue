@@ -1,23 +1,26 @@
 <template>
   <div class="p-4 min-h-screen">
+
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="text-2xl font-bold">标签管理</h1>
+        <p class=" text-sm mt-1">增加或删除题目标签</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <el-form ref="formRef" class="flex items-center gap-2">
+          <el-input v-model="newTag.name" placeholder="请输入新标签" style="width: 200px" />
+          <el-button type="primary" @click="addTag">新增标签</el-button>
+        </el-form>
+
+        <el-button type="primary" @click="fetchTagList">
+          刷新列表
+        </el-button>
+      </div>
+    </div>
     <el-card shadow="never" class="rounded-xl border-none">
-      <template #header>
-
-        <div class="flex justify-between items-center">
-          <span class="text-xl font-bold">标签管理库</span>
-          <div class="flex items-center gap-2">
-            <el-form ref="formRef" class="flex items-center gap-2">
-              <el-input v-model="newTag.name" placeholder="请输入新标签" style="width: 200px" />
-              <el-button type="primary" @click="addTag">新增标签</el-button>
-            </el-form>
-
-            <el-button type="primary" @click="fetchTagList">
-              刷新列表
-            </el-button>
-          </div>
-        </div>
-      </template>
       <el-table :data="tableData" style="width: 100%" stripe v-loading="loading">
+        <el-table-column type="index" label="#" width="60" align="center" />
+
         <!-- <el-table-column prop="id" label="ID" width="80px" /> -->
         <el-table-column prop="name" label="标签名">
           <template #default="{ row }">
@@ -89,4 +92,12 @@ const deleteTag = async (id: string) => {
 
 </script>
 
-<style scoped></style>
+<style scoped>
+:deep(.el-card__body) {
+  padding: 0;
+}
+
+:deep(.el-table) {
+  border-radius: 0 0 12px 12px;
+}
+</style>

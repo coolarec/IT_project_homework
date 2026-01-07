@@ -8,14 +8,19 @@ from django.db.models import Count
 from django.db import transaction
 from django.db.models import Q
 from ninja import Query
+from django.db.models import Count, F
+
 
 from problem.models import Problem
+from core.user.user_model import User
+from core.user.user_schema import UserSchemaAvatarOut
 from .models import Contest, UserGroup, VirtualProblem
 from .schemas import (
     UserGroupIn, UserGroupOut, 
     ContestIn, ContestOut, ContestListOut, ContestDetailOut,
     VirtualProblemIn, VirtualProblemBindIn,
-    VirtualProblemOut, GroupAddMembersIn,ContestUpdteIn,ContestDetailOutWithVp
+    VirtualProblemOut, GroupAddMembersIn,ContestUpdteIn,ContestDetailOutWithVp,
+    GroupDeleteMembersIn
 )
 from .filters import ContestFilter
 # 导入你提供的 fu_crud 核心函数
@@ -36,12 +41,10 @@ def create_group(request, data: UserGroupIn):
 
 @router.get("/groups", response=List[UserGroupOut], summary="获取用户组列表")
 def list_groups(request, name: Optional[str] = None):
-    query_set = UserGroup.objects.annotate(member_count=Count('members'))
+    query_set = UserGroup.objects.annotate(member_count=Count('members'),creator_name=F('creator__name')).prefetch_related('members')
     if name:
         query_set = query_set.filter(name__icontains=name)
-    
     query_set = query_set.order_by('-created_at')
-    
     return query_set
 
 @router.patch("/groups/{id}", response=UserGroupOut, summary="更新用户组")
@@ -77,7 +80,7 @@ def add_group_members(request, id: str, data: GroupAddMembersIn):
     return instance
 
 @router.delete("/groups/{id}/members", response=UserGroupOut, summary="从用户组移除成员")
-def remove_group_members(request, id: str, data: GroupAddMembersIn):
+def remove_group_members(request, id: str, data: GroupDeleteMembersIn):
     """
     移除用户组成员
     """
@@ -86,8 +89,10 @@ def remove_group_members(request, id: str, data: GroupAddMembersIn):
     if str(instance.creator_id) != str(request.auth.id):
         raise HttpError(403, "只有创建者可以移除成员")
 
+    if str(instance.creator_id) == request.auth.id:
+        raise HttpError(403, "不可删除自己")
     # 执行移除
-    instance.members.remove(*data.user_ids)
+    instance.members.remove(data.user_id)
 
     # return 实例
     return instance
@@ -254,3 +259,12 @@ def delete_virtual_problem(request, id: UUID):
     instance = get_object_or_404(VirtualProblem, id=id)
     instance.delete()
     return instance
+
+@router.get("/allUser/", response=List[UserSchemaAvatarOut], summary="获取所有用户头像信息")
+def get_all_users_avatars(request):
+    """
+    返回系统中所有用户的 ID、用户名和头像
+    """
+    # 建议只取需要的字段，优化性能
+    users = User.objects.all().only('id', 'name', 'avatar')
+    return users
