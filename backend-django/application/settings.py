@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'scheduler',
     'problem',
     'contest',
-    'neo4j'
+    'neo4j',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
@@ -60,9 +61,11 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     # 'common.middleware.SecurityHeadersMiddleware',  # 新增安全头中间件
     # 'common.middleware.ApiLoggingMiddleware',
 ]
+CORS_ORIGIN_ALLOW_ALL = True
 
 ROOT_URLCONF = 'application.urls'
 AUTH_USER_MODEL = 'core.User'
