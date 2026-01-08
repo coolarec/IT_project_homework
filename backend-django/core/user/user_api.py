@@ -44,7 +44,10 @@ from core.user.user_schema import (
     UserPermissionCheckIn,
     UserPermissionCheckOut,
     UserSubordinatesOut,
+    RegisterSchemaIn,
 )
+
+from django.db import transaction
 
 router = Router()
 
@@ -81,12 +84,12 @@ def create_user(request, data: UserSchemaIn):
 
     # 创建用户
     user = create(request, data_dic, User)
-
     # 设置多对多关系
     if post_ids:
         user.post.set(post_ids)
-    if role_ids:
-        user.core_roles.set(role_ids)
+    default_role_id = "7952b16a-81dd-414b-96dc-dcdf9347876f"
+    all_roles = [default_role_id] + role_ids  # role_ids 可能为空也没关系
+    user.core_roles.set(all_roles)
 
     return user
 
@@ -354,7 +357,7 @@ def list_all_user(request):
     return query_set
 
 
-@router.put("/user/reset/password/{user_id}", response=UserSchemaOut, summary="重置用户密码")
+@router.post("/user/reset/password/{user_id}", response=UserSchemaOut, summary="重置用户密码")
 def reset_password(request, user_id: str):
     """
     重置用户密码为默认密码
@@ -572,3 +575,42 @@ def import_user(request):
     """
     # TODO: 实现导入功能
     return response_success("导入功能待实现")
+
+@router.post("/register", response=RegisterSchemaIn, auth=None, summary="用户注册")
+def register(request, data: RegisterSchemaIn):
+    """
+    用户自助注册接口
+    - 开放访问（auth=None）
+    - 用户自定义密码
+    - 自动分配基础角色
+    """
+    # 1. 唯一性检查
+    if User.objects.filter(username=data.username).exists():
+        raise HttpError(400, "用户名已被注册")
+    
+    # 2. 数据准备
+    data_dic = data.dict()
+    # 对用户输入的明文密码进行加密
+    print(data_dic["password"])
+    data_dic["name"] = data_dic["username"]
+    data_dic["password"] = make_password(data_dic["password"])
+    
+    # 设置初始状态
+    data_dic["user_type"] = 1  # 普通用户
+    data_dic["user_status"] = 1  # 正常状态
+
+    try:
+        with transaction.atomic():
+            # 3. 创建用户
+            # 如果你的 create 助手函数处理了基础元数据（如 sys_create_datetime），则调用它
+            # 否则直接使用 User.objects.create(**data_dic)
+            user = User.objects.create(**data_dic)
+
+            # 4. 自动分配基础角色 (参考你提供的角色ID)
+            # 这里的 ID 应为系统中定义的“普通用户”或“新注册用户”的基础权限角色
+            default_role_id = "7952b16a-81dd-414b-96dc-dcdf9347876f"
+            user.core_roles.set([default_role_id])
+
+        return user
+    except Exception as e:
+        raise HttpError(500, f"注册失败: {str(e)}")

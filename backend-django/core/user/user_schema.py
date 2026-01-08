@@ -359,3 +359,7 @@ class UserPermissionCheckOut(Schema):
 class UserSubordinatesOut(Schema):
     """用户下属列表输出"""
     subordinates: List[UserSchemaSimple]
+
+class RegisterSchemaIn(Schema):
+    username: str
+    password: str  # 用户自定义密码

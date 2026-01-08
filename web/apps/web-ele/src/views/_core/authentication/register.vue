@@ -1,15 +1,17 @@
 <script lang="ts" setup>
 import type { VbenFormSchema } from '@vben/common-ui';
 import type { Recordable } from '@vben/types';
-
+import { ElMessage } from 'element-plus';
 import { computed, h, ref } from 'vue';
+import { useRouter } from 'vue-router'; // 导入路由用于跳转
 
 import { AuthenticationRegister, z } from '@vben/common-ui';
 import { $t } from '@vben/locales';
-
+import { registerApi } from "#/api/core/user"
 defineOptions({ name: 'Register' });
 
 const loading = ref(false);
+const router = useRouter();
 
 const formSchema = computed((): VbenFormSchema[] => {
   return [
@@ -81,9 +83,34 @@ const formSchema = computed((): VbenFormSchema[] => {
   ];
 });
 
-function handleSubmit(value: Recordable<any>) {
-  // eslint-disable-next-line no-console
-  console.log('register submit:', value);
+async function handleSubmit(value: Recordable<any>) {
+  try {
+    loading.value = true;
+
+    // 1. 准备提交给后端的数据
+    // 过滤掉 confirmPassword 和 agreePolicy，只发送后端需要的字段
+    const params = {
+      username: value.username,
+      password: value.password,
+      // 如果你的表单后续增加了 email 或 mobile，也可以在这里添加
+    };
+
+    // 2. 调用注册接口
+    await registerApi(params);
+
+    // 3. 注册成功提示
+    ElMessage.success($t('authentication.registerSuccess') || '注册成功！');
+
+    // 4. 跳转到登录页
+    router.push('/auth/login');
+
+  } catch (error: any) {
+    // 错误处理：Vben 的 requestClient 通常会处理全局错误提示
+    // 如果需要特殊处理，可以在这里捕获
+    console.error('注册失败:', error);
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 

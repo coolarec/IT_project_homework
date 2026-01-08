@@ -4,14 +4,8 @@
       <!-- 1. 选择框：仅显示不在组内的用户 -->
       <div class="space-y-2">
         <p class="text-xs font-medium text-gray-500 uppercase">添加新成员</p>
-        <el-select
-          v-model="selectedUserIds"
-          multiple
-          filterable
-          placeholder="搜索并选择用户..."
-          class="w-full"
-          :loading="loading"
-        >
+        <el-select v-model="selectedUserIds" multiple filterable placeholder="搜索并选择用户..." class="w-full"
+          :loading="loading">
           <!-- 这里改用 availableUsers -->
           <el-option v-for="item in availableUsers" :key="item.id" :label="item.name" :value="item.id">
             <div class="flex items-center gap-3">
@@ -24,9 +18,9 @@
       </div>
 
       <!-- 2. 已有成员列表 -->
-      <div class="space-y-2">
-        <p class="text-xs font-medium text-gray-500 uppercase">当前组成员 ({{ props.existingUsers.length }})</p>
-        <el-table :data="props.existingUsers" style="width: 100%" max-height="300px" size="small" border class="rounded-lg">
+      <div class="overflow-auto max-h-[300px]">
+        <el-table :data="props.existingUsers" style="width: 100%" size="small" border class="rounded-lg"
+          :show-overflow-tooltip="true" :max-height="300">
           <el-table-column label="成员信息">
             <template #default="{ row }">
               <div class="flex items-center gap-3">
@@ -47,13 +41,8 @@
     <template #footer>
       <div class="flex justify-end gap-3 px-2">
         <el-button class="!rounded-md" @click="dialogVisible = false">关闭</el-button>
-        <el-button
-          type="primary"
-          class="!rounded-md"
-          :disabled="selectedUserIds.length === 0"
-          :loading="submitting"
-          @click="handleAddMembers"
-        >
+        <el-button type="primary" class="!rounded-md" :disabled="selectedUserIds.length === 0" :loading="submitting"
+          @click="handleAddMembers">
           确认添加 ({{ selectedUserIds.length }})
         </el-button>
       </div>
@@ -65,7 +54,7 @@
 import { ref, watch, computed } from 'vue';
 import { getFileStreamUrl } from '#/api/core/file';
 import { fetchAllUsersInfo, type UserItem, addGroupMembersApi, removeGroupMembersApi } from '#/api/contest'
-import { ElMessage, ElDialog, ElOption, ElButton, ElSelect, ElAvatar, ElTag, ElTable, ElTableColumn } from 'element-plus';
+import { ElMessage, ElDialog, ElOption, ElButton, ElSelect, ElAvatar, ElTable, ElTableColumn } from 'element-plus';
 
 const props = defineProps<{
   visible: boolean;

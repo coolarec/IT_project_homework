@@ -40,11 +40,6 @@ class UserGroup(models.Model):
 
 class Contest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    PRIVATE_PERMISSION = (
-        (0, '仅个人可见'),
-        (2, '指定用户组可见'),
-        (3, '全体可见'),
-    )
     title = models.CharField(max_length=200)
     contest_start_time = models.DateTimeField()
     contest_end_time = models.DateTimeField()

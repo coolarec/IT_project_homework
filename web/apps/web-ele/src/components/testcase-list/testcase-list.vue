@@ -139,7 +139,7 @@
 </template>
 <script lang="ts" setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import { ElMessageBox, ElInputNumber, ElUpload, ElForm, ElTable, ElTableColumn, ElMessage, ElButton, ElFormItem, ElIcon, ElTooltip } from 'element-plus';
+import { ElMessageBox, ElUpload, ElForm, ElTable, ElTableColumn, ElMessage, ElButton, ElFormItem, ElIcon, ElTooltip } from 'element-plus';
 import { uploadTestCaseApi, getTestCaseApi, deleteTestCaseApi, type TestCase, updateProblemApi, getProblemDetailApi, type ProblemUpdateIn } from '#/api/problem';
 import { UploadFilled } from '@element-plus/icons-vue'
 

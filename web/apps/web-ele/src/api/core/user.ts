@@ -111,6 +111,18 @@ export interface PaginatedResponse<T> {
 }
 
 /**
+ * 用户注册输入参数
+ */
+export interface UserRegisterInput {
+  username: string;
+  password: string; // 用户自定义明文密码
+  name?: string;
+  email?: string;
+  mobile?: string;
+  gender?: number;
+}
+
+/**
  * 获取用户信息
  */
 export async function getUserInfoApi() {
@@ -184,7 +196,7 @@ export async function resetUserPasswordApi(
   data: UserPasswordResetInput,
 ) {
   return requestClient.post<User>(
-    `/api/core/user/${userId}/reset_password`,
+    `/api/core/user/reset/password/${userId}`,
     data,
   );
 }
@@ -242,4 +254,13 @@ export async function changePasswordApi(data: UserChangePasswordInput) {
     '/api/core/change-password',
     data,
   );
+}
+
+/**
+ * 用户自主注册
+ * 对应后端 register 接口，auth=None
+ */
+export async function registerApi(data: UserRegisterInput) {
+  // 根据您之前的后端逻辑，注册路径通常为 /api/core/register 或 /api/auth/register
+  return requestClient.post<User>('/api/core/register', data);
 }

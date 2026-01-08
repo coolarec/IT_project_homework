@@ -109,7 +109,7 @@ export async function getRoleDetailApi(roleId: string) {
  * 更新角色
  */
 export async function updateRoleApi(roleId: string, data: RoleUpdateInput) {
-  return requestClient.put<Role>(`/api/core/role/${roleId}`, data);
+  return requestClient.patch<Role>(`/api/core/role/${roleId}`, data);
 }
 
 /**

@@ -12,6 +12,7 @@ export default defineConfig(async () => {
         }),
       ],
       server: {
+        allowedHosts: ['frp.coolarec.link'],
         proxy: {
           '/basic-api': {
             changeOrigin: true,

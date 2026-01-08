@@ -89,7 +89,7 @@ def remove_group_members(request, id: str, data: GroupDeleteMembersIn):
     if str(instance.creator_id) != str(request.auth.id):
         raise HttpError(403, "只有创建者可以移除成员")
 
-    if str(instance.creator_id) == request.auth.id:
+    if str(data.user_id) == request.auth.id:
         raise HttpError(403, "不可删除自己")
     # 执行移除
     instance.members.remove(data.user_id)
