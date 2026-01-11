@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-@Author: 臧成龙
-@Contact: 939589097@qq.com
-@Time: 2025-12-31
-@File: auth_api.py
-@Desc: Auth API - 认证相关接口 - 提供登录、登出、令牌刷新、用户信息等功能
-"""
-"""
 Auth API - 认证相关接口
 提供登录、登出、令牌刷新、用户信息等功能
 """

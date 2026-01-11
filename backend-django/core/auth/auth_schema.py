@@ -1,13 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-@Author: 臧成龙
-@Contact: 939589097@qq.com
-@Time: 2025-12-31
-@File: auth_schema.py
-@Desc: Auth Schema - 认证相关的数据模型
-"""
-"""
 Auth Schema - 认证相关的数据模型
 """
 from typing import Optional

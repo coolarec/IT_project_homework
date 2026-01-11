@@ -1,22 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-@Author: 臧成龙
-@Contact: 939589097@qq.com
-@Time: 2025-12-31
-@File: fu_cache.py
-@Desc: 缓存工具类和管理工具 - 
-"""
-"""
-缓存工具类和管理工具
-
-统一管理系统缓存策略，支持多种缓存场景：
-1. 数据缓存 - 频繁读取的数据
-2. 会话缓存 - 用户会话和权限
-3. 频率限制 - 登录、API 调用限流
-4. 锁定机制 - 防暴力破解
-5. 临时数据 - 验证码、临时令牌
-"""
 import logging
 from functools import wraps
 from typing import Any, Callable

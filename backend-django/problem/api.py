@@ -23,7 +23,7 @@ def create_problem(request, payload: ProblemCreateIn):
     tags = data.pop('tags', [])
     examples_data = data.pop('examples', [])
 
-    # 使用事务保证 Problem 和 Example 同时成功
+    # 保证 Problem 和 Example 同时成功
     with transaction.atomic():
         problem = Problem.objects.create(problem_setter=request.auth, **data)
 
@@ -34,7 +34,6 @@ def create_problem(request, payload: ProblemCreateIn):
             Example.objects.bulk_create([
                 Example(problem=problem, **ex) for ex in examples_data
             ])
-    problem.step_description_done=0
     return problem
 
 @router.patch("/{problem_id}",response=ProblemDetailOut)
@@ -92,16 +91,16 @@ def getProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
 
 @router.get("/", response=List[ProblemListOut])
 def list_problems(request, keyword: Optional[str] = None):
-    # 1. 预加载标签并按时间排序
+    # 预加载标签并按时间排序
     queryset = Problem.objects.prefetch_related('tags').order_by('-created_at')
 
-    # 2. 权限过滤逻辑
+    # 权限过滤逻辑
     if request.auth.USER_TYPE_CHOICES not in [0, 1]:
         queryset = queryset.filter(
             Q(is_public=True) | Q(problem_setter=request.auth)
         )
 
-    # 3. 关键词搜索逻辑
+    # 关键词搜索逻辑
     if keyword:
         queryset = queryset.filter(
             Q(title__icontains=keyword)           # 标题包含关键词（不区分大小写）
@@ -153,8 +152,6 @@ def delete_testcase(request, testcase_id: UUID):
     testcase = get_object_or_404(TestCase, id=testcase_id)
 
     # 执行删除
-    # 注意：TestCase 如果有 FileField，数据库记录删了，但物理文件默认还会留在硬盘上
-    # 如果需要删掉物理文件，建议在 delete() 之前处理，或者使用信号(signals)
 
     return delete(testcase.id,TestCase)
 
@@ -170,7 +167,7 @@ def create_solution(request, problem_id: UUID, payload: SolutionIn):
     problem = get_object_or_404(Problem, id=problem_id)
     solution = Solution.objects.create(
         problem=problem,
-        user=request.auth,  # 确保已登录
+        user=request.auth,
         **payload.dict()
     )
     return solution

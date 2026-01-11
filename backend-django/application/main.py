@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-# @Time    : 2022/5/9 23:15
-# @Author  : 臧成龙
-# @FileName: api.py
-# @Software: PyCharm
 from datetime import datetime
 
 from ninja.main import NinjaAPI

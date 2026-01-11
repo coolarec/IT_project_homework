@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-JWT 鉴权和权限校验
-基于 Core 模块的权限结构重新设计
-"""
 import logging
 import re
 from calendar import timegm
