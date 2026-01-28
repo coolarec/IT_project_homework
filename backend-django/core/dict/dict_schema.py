@@ -26,12 +26,12 @@ class DictFilters(FuFilters):
 
 
 class DictSchemaIn(ModelSchema):
-    class Config:
+    class Meta:
         model = Dict
-        model_exclude = exclude_fields
+        exclude = exclude_fields
 
 
 class DictSchemaOut(ModelSchema):
-    class Config:
+    class Meta:
         model = Dict
-        model_fields = "__all__"
+        fields = "__all__"

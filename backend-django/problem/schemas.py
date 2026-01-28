@@ -7,15 +7,15 @@ from uuid import UUID
 
 
 class TagOut(ModelSchema):
-    class Config:
+    class Meta:
         model = Tag
-        model_fields = ['id', 'name']
+        fields = ['id', 'name']
 
 
 class TagIn(ModelSchema):
-    class Config:
+    class Meta:
         model = Tag
-        model_fields = ['name']
+        fields = ['name']
 
 # --- Example ---
 
@@ -29,18 +29,18 @@ class ExampleSchema(Schema):
 
 class ProblemListOut(ModelSchema):
     tags: List[TagOut]
-    class Config:
+    class Meta:
         model = Problem
-        model_fields = ['id','title', 'difficulty', 'is_public', 'created_at']
+        fields = ['id','title', 'difficulty', 'is_public', 'created_at']
 
 
 class ProblemDetailOut(ModelSchema):
     tags: List[TagOut]
     examples: List[ExampleSchema] = []
 
-    class Config:
+    class Meta:
         model = Problem
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class ProblemCreateIn(Schema):
@@ -104,17 +104,16 @@ class ProblemStatusUpdate(Schema):
 
 # --- TestCase & Solution (保留原有) ---
 class TestCaseOut(ModelSchema):
-    class Config:
+    class Meta:
         model = TestCase
-        model_fields = "__all__"
+        fields = "__all__"
 
 
 class SolutionOut(ModelSchema):
     user_name: str = None
-
-    class Config:
+    class Meta:
         model = Solution
-        model_fields = ['id', 'language', 'code', 'description', 'created_at']
+        fields = ['id', 'language', 'code', 'description', 'created_at']
 
     @staticmethod
     def resolve_user_name(obj):

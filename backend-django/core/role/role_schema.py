@@ -69,9 +69,9 @@ class RoleSchemaIn(ModelSchema):
             raise ValueError('优先级不能为负数')
         return v
 
-    class Config:
+    class Meta:
         model = Role
-        model_exclude = (*exclude_fields, "menu", "permission", "dept")
+        exclude = (*exclude_fields, "menu", "permission", "dept")
 
 
 class RoleSchemaPatch(Schema):
@@ -133,9 +133,9 @@ class RoleSchemaOut(ModelSchema):
     permission_count: Optional[int] = None
     can_delete: Optional[bool] = None
 
-    class Config:
+    class Meta:
         model = Role
-        model_fields = "__all__"
+        fields = "__all__"
 
     @staticmethod
     def resolve_role_type_display(obj):

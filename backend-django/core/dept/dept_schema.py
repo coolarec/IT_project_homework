@@ -60,9 +60,9 @@ class DeptSchemaIn(ModelSchema):
             raise ValueError('电话号码格式不正确')
         return v
 
-    class Config:
+    class Meta:
         model = Dept
-        model_exclude = (*exclude_fields, "parent", "lead", "level", "path")
+        exclude = (*exclude_fields, "parent", "lead", "level", "path")
 
 
 class DeptSchemaPatch(Schema):
@@ -116,9 +116,9 @@ class DeptSchemaOut(ModelSchema):
     user_count: Optional[int] = None
     full_name: Optional[str] = None
 
-    class Config:
+    class Meta:
         model = Dept
-        model_fields = "__all__"
+        fields = "__all__"
 
     @staticmethod
     def resolve_parent_id(obj):

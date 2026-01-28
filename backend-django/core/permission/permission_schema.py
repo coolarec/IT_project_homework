@@ -59,9 +59,9 @@ class PermissionSchemaIn(ModelSchema):
             raise ValueError('权限类型必须在 0-3 之间')
         return v
 
-    class Config:
+    class Meta:
         model = Permission
-        model_exclude = (*exclude_fields, "menu")
+        exclude = (*exclude_fields, "menu")
 
 
 class PermissionSchemaPatch(Schema):
@@ -110,9 +110,9 @@ class PermissionSchemaOut(ModelSchema):
     http_method_display: Optional[str] = None
     permission_type_display: Optional[str] = None
 
-    class Config:
+    class Meta:
         model = Permission
-        model_fields = "__all__"
+        fields = "__all__"
 
     @staticmethod
     def resolve_http_method_display(obj):

@@ -29,9 +29,9 @@ class FileManagerSchemaIn(ModelSchema):
     """文件管理输入Schema"""
     parent_id: UUID4 | None = Field(None, alias="parent_id")
 
-    class Config:
+    class Meta:
         model = FileManager
-        model_exclude = exclude_fields + ('parent', 'url', 'thumbnail_url', 'download_count')
+        exclude = exclude_fields + ('parent', 'url', 'thumbnail_url', 'download_count')
 
 
 class FileManagerSimpleSchemaOut(Schema):
@@ -52,9 +52,9 @@ class FileManagerSchemaOut(ModelSchema):
     file_size: int = Field(None)
     updated_time: str = Field(None)
 
-    class Config:
+    class Meta:
         model = FileManager
-        model_exclude = ['parent', 'type', 'size', 'sys_create_datetime', 'sys_update_datetime']
+        exclude = ['parent', 'type', 'size', 'sys_create_datetime', 'sys_update_datetime']
 
     @staticmethod
     def resolve_parent_id(obj):

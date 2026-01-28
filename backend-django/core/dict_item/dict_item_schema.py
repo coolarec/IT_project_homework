@@ -29,9 +29,9 @@ class DictItemFilters(FuFilters):
 class DictItemSchemaIn(ModelSchema):
     dict_id: Optional[str]
 
-    class Config:
+    class Meta:
         model = DictItem
-        model_exclude = (*exclude_fields, "dict")
+        exclude = (*exclude_fields, "dict")
 
     # @field_validator('dict_id', mode='before')
     # @classmethod
@@ -48,9 +48,9 @@ class DictItemSchemaIn(ModelSchema):
 class DictItemSchemaOut(ModelSchema):
     dict_id: Optional[str] = Field(None, alias="dict_id")
 
-    class Config:
+    class Meta:
         model = DictItem
-        model_exclude = ("dict",)
+        exclude = ("dict",)
 
     @staticmethod
     def resolve_dict_id(obj):

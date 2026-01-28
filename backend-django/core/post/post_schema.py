@@ -65,9 +65,9 @@ class PostSchemaIn(ModelSchema):
             raise ValueError('岗位级别必须在 0-3 之间')
         return v
 
-    class Config:
+    class Meta:
         model = Post
-        model_exclude = (*exclude_fields, "dept")
+        exclude = (*exclude_fields, "dept")
 
 
 class PostSchemaPatch(Schema):
@@ -116,9 +116,9 @@ class PostSchemaOut(ModelSchema):
     post_level_display: Optional[str] = None
     user_count: Optional[int] = None
 
-    class Config:
+    class Meta:
         model = Post
-        model_fields = "__all__"
+        fields = "__all__"
 
     @staticmethod
     def resolve_dept_id(obj):

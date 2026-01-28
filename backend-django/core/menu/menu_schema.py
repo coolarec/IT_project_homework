@@ -68,9 +68,9 @@ class MenuSchemaIn(ModelSchema):
             raise ValueError('排序值不能为负数')
         return v
 
-    class Config:
+    class Meta:
         model = Menu
-        model_exclude = (*exclude_fields, "parent")
+        exclude = (*exclude_fields, "parent")
 
 
 class MenuSchemaPatch(Schema):
@@ -138,9 +138,9 @@ class MenuSchemaOut(ModelSchema):
     child_count: Optional[int] = None
     full_path: Optional[str] = None
 
-    class Config:
+    class Meta:
         model = Menu
-        model_fields = "__all__"
+        fields = "__all__"
 
     @staticmethod
     def resolve_level(obj):

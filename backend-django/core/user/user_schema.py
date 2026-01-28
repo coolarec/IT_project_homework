@@ -86,9 +86,9 @@ class UserSchemaIn(ModelSchema):
             raise ValueError('性别必须为 0(未知)、1(男) 或 2(女)')
         return v
 
-    class Config:
+    class Meta:
         model = User
-        model_exclude = (
+        exclude = (
             "password",
             "is_superuser",
             "post",
@@ -182,9 +182,9 @@ class UserSchemaOut(ModelSchema):
     role_names: Optional[List[str]] = None
     post_names: Optional[List[str]] = None
 
-    class Config:
+    class Meta:
         model = User
-        model_exclude = ("password",)
+        exclude = ("password",)
 
     @staticmethod
     def resolve_user_type_display(obj):

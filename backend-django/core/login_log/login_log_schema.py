@@ -54,9 +54,9 @@ class LoginLogSchemaIn(ModelSchema):
             raise ValueError('登录状态必须为 0(失败) 或 1(成功)')
         return v
 
-    class Config:
+    class Meta:
         model = LoginLog
-        model_exclude = (
+        exclude = (
             "session_id",
             *exclude_fields,
         )
@@ -67,9 +67,9 @@ class LoginLogSchemaOut(ModelSchema):
     status_display: Optional[str] = None
     failure_reason_display: Optional[str] = None
 
-    class Config:
+    class Meta:
         model = LoginLog
-        model_fields = "__all__"
+        fields = "__all__"
 
     @staticmethod
     def resolve_status_display(obj):

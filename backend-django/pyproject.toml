@@ -4,4 +4,36 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "django>=5.2.10",
+    "django-ninja>=1.5.3",
+    "channels>=4.3.2",
+    "channels-redis>=4.3.0",
+    "django-redis>=6.0.0",
+    "django-cors-headers>=4.9.0",
+    "uvicorn[standard]>=0.38.0",
+    "gunicorn>=23.0.0",
+    "celery>=5.4.0",
+    "apscheduler>=3.11.2",
+    "requests>=2.32.5",
+    "httpx>=0.28.1",
+    "orjson>=3.10.1",
+    "user-agents>=2.2.0",
+    "psutil>=7.0.0",
+    "PyJWT>=2.8.0",
+    "cryptography>=42.0.5,<45.0.0",
+    "mysqlclient>=2.2.7",
+    "psycopg2-binary>=2.9.9",
+    "pymysql>=1.1.0",
+    "pyodbc>=4.0.39",
+    "redis>=6.2.0",
+    "minio>=7.2.20",
+    "openpyxl>=3.0.10",
+    "python-alipay-sdk>=3.3.0",
+    "geoip2>=4.8.0",
+    "dashscope>=1.18.0",
+    "neo4j>=6.1.0",
+    "pandas>=3.0.0",
+    "opencc>=1.2.0",
+]
+
