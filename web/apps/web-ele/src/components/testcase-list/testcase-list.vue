@@ -98,9 +98,14 @@
     </div>
 
     <!-- 提交按钮 -->
-    <el-button type="primary" @click="updateStatusOnly" round>
-      更新状态
-    </el-button>
+    <div class="flex items-center gap-2">
+      <el-button type="info" @click="downloadAllTestcases" round>
+        下载全部测试点
+      </el-button>
+      <el-button type="primary" @click="updateStatusOnly" round>
+        更新状态
+      </el-button>
+    </div>
   </div>
 
   <el-table :data="testcaseData" v-loading="loading" style="width: 100%;">
@@ -139,9 +144,10 @@
 </template>
 <script lang="ts" setup>
 import { ref, onMounted, watch, computed } from 'vue';
-import { ElMessageBox, ElUpload, ElForm, ElTable, ElTableColumn, ElMessage, ElButton, ElFormItem, ElIcon, ElTooltip } from 'element-plus';
-import { uploadTestCaseApi, getTestCaseApi, deleteTestCaseApi, type TestCase, updateProblemApi, getProblemDetailApi, type ProblemUpdateIn } from '#/api/problem';
-import { UploadFilled } from '@element-plus/icons-vue'
+import { ElMessageBox, ElUpload, ElForm, ElTable, ElTableColumn, ElMessage, ElTag,
+  ElButton, ElFormItem, ElIcon, ElTooltip,ElScrollbar } from 'element-plus';
+import { uploadTestCaseApi, getTestCaseApi, deleteTestCaseApi, downloadTestcasesApi, type TestCase, updateProblemApi, getProblemDetailApi, type ProblemUpdateIn } from '#/api/problem';
+import { UploadFilled,WarningFilled,CircleCheckFilled,Memo } from '@element-plus/icons-vue'
 
 const loading = ref(false);
 interface Props {
@@ -154,6 +160,7 @@ const origin = ref<number>(0);
 const content = ["未完成", "创作中", "已完成"]
 
 const testcaseData = ref<TestCase[]>([])
+const problemTitle = ref<string>('')
 
 const fileList = ref<any[]>([]);
 const testCaseForm = ref({
@@ -181,8 +188,29 @@ const onFileChange = (file: any, files: any[]) => {
 };
 
 // 处理删除文件
-const onFileRemove = (file: any, files: any[]) => {
+const onFileRemove = (_file: any, files: any[]) => {
   fileList.value = files;
+};
+
+const downloadAllTestcases = async () => {
+  try {
+    const resp: any = await downloadTestcasesApi(props.activeProblemId);
+    // requestClient 可能直接返回 Blob 或者 AxiosResponse
+    const blob = resp instanceof Blob ? resp : resp?.data ?? resp;
+    if (!blob) throw new Error('No data');
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    // 使用题目名或 id 作为下载文件名
+    a.download = problemTitle.value ? `${problemTitle.value}_testcases.zip` : `problem_${props.activeProblemId}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (e) {
+    console.error(e);
+    ElMessage.error('下载失败');
+  }
 };
 
 // 提取文件名逻辑（封装成函数复用）
@@ -309,6 +337,7 @@ onMounted(async () => {
   const detail = await getProblemDetailApi(props.activeProblemId);
   currentStatus.value = detail.step_testcase_done
   origin.value = currentStatus.value
+  problemTitle.value = detail.title || ''
 })
 
 const updateStatusOnly = async () => {

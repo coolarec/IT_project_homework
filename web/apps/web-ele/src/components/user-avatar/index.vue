@@ -87,6 +87,7 @@ const effectiveAvatarUrl = computed(() => {
   const avatarPath =
     props.avatar || props.user?.avatar || userDetail.value?.avatar;
   if (avatarPath) {
+    console.log('avatarPath', avatarPath);
     return getFileStreamUrl(avatarPath);
   }
   return undefined;

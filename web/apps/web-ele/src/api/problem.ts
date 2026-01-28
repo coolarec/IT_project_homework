@@ -224,6 +224,13 @@ export function getTestCaseApi(id: string) {
   return requestClient.get<TestCase[]>(`/api/problem/${id}/testcases`)
 }
 
+/** 下载指定题目的所有测试点（zip） */
+export function downloadTestcasesApi(id: string) {
+  return requestClient.get<Blob>(`/api/problem/${id}/testcases/zip`, {
+    responseType: 'blob'
+  });
+}
+
 /** 为指定题目发布题解 */
 export function createSolutionApi(problemId: string, data: SolutionInput) {
   return requestClient.post<Solution>(`/api/problem/${problemId}/solutions`, data)

@@ -65,7 +65,7 @@
         </el-table-column>
 
         <!-- 虚拟描述 -->
-        <el-table-column prop="description" label="题目知识点" min-width="160" />
+        <el-table-column prop="description" label="出题方向及难度预期" min-width="160" />
 
         <el-table-column label="关联真实题目及准备进度" min-width="380">
           <template #default="{ row }">
@@ -100,12 +100,14 @@
         </el-table-column>
 
         <!-- 操作区 -->
-        <el-table-column label="管理操作" width="180" align="center" fixed="right">
+        <el-table-column label="管理操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleOpenBind(row)">
               {{ row.is_bound ? '更换题目' : '关联题目' }}
             </el-button>
             <el-button link type="primary" @click="openVpDialog('edit', row)">属性</el-button>
+            <el-button v-if="row.is_bound" link type="success" @click="openDrawer('testcase', row)">测试点</el-button>
+            <el-button v-if="row.is_bound" link type="info" @click="openDrawer('solution', row)">题解</el-button>
             <el-button link type="danger" @click="handleDeleteVp(row.id)">移除</el-button>
           </template>
         </el-table-column>
@@ -119,7 +121,7 @@
         <el-form-item label="题目名" required>
           <el-input v-model="vpDialog.form.name" placeholder="请输入题号，如: A" />
         </el-form-item>
-        <el-form-item label="题目简要描述" required>
+        <el-form-item label="出题方向及难度预期" required>
           <el-input v-model="vpDialog.form.description" placeholder="请输入题目名称" />
         </el-form-item>
         <div class="grid grid-cols-2 gap-4">
@@ -170,6 +172,19 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 抽屉：测试点管理 -->
+    <el-drawer v-model="drawer.visible" :title="drawer.type === 'testcase' ? '测试点管理' : '题解管理'" 
+      size="40%" destroy-on-close>
+      <template #header>
+        <div class="flex flex-col">
+          <span class="text-lg font-bold">{{ drawer.type === 'testcase' ? '测试点管理' : '题解管理' }}</span>
+          <span class="text-xs text-gray-500 mt-1">{{ drawer.problemTitle }}</span>
+        </div>
+      </template>
+      <TestcaseList v-if="drawer.type === 'testcase'" :active-problem-id="drawer.problemId" />
+      <SolutionList v-if="drawer.type === 'solution'" :active-problem-id="drawer.problemId" />
+    </el-drawer>
   </div>
 </template>
 
@@ -180,9 +195,11 @@ import {
   ElMessage, ElMessageBox, ElTooltip, ElDialog, ElButton,
   ElForm, ElFormItem, ElOption, ElSelect, ElIcon,
   ElColorPicker, ElInput, ElTable, ElTableColumn,
-  ElCard, ElInputNumber, ElTag
+  ElCard, ElInputNumber, ElTag, ElDrawer
 } from 'element-plus';
 import { Clock, User, Plus, Check, InfoFilled } from '@element-plus/icons-vue';
+import TestcaseList from '#/components/testcase-list/testcase-list.vue';
+import SolutionList from '#/components/solution-list/solution-list.vue';
 
 // 导入 API
 import {
@@ -241,7 +258,6 @@ const loadDetail = async () => {
   try {
     const res = await getContestDetailVpApi(id);
     contest.value = res;
-    ElMessage.success("题目加载成功")
   } catch (error) {
     ElMessage.error('获取竞赛详情失败');
   } finally {
@@ -255,7 +271,7 @@ const vpDialog = reactive({
   type: 'create', // create | edit
   loading: false,
   targetId: '',
-  form: { name: '', description: '', order: 0, color: '#409EFF' }
+  form: { name: '', description: '', order: 0, color: '#543874' }
 });
 
 const openVpDialog = (type: 'create' | 'edit', row?: any) => {
@@ -269,7 +285,7 @@ const openVpDialog = (type: 'create' | 'edit', row?: any) => {
       color: row.color
     };
   } else {
-    vpDialog.form = { name: '', description: '', order: 0, color: '#409EFF' };
+    vpDialog.form = { name: '', description: '', order: 0, color: '#543874' };
   }
   vpDialog.visible = true;
 };
@@ -303,6 +319,14 @@ const bindDialog = reactive({
   searching: false,
   submitting: false,
   options: [] as ProblemListItem[]
+});
+
+// --- 抽屉状态 (测试点 & 题解) ---
+const drawer = reactive({
+  visible: false,
+  type: 'testcase', // testcase | solution
+  problemId: '',
+  problemTitle: ''
 });
 
 const handleOpenBind = (row: any) => {
@@ -354,6 +378,16 @@ const handleDeleteVp = (id: string) => {
 
 const goProblemEditor = (id: string) => {
   router.push(`/problem/problemDetail?id=${id}`);
+};
+
+const openDrawer = (type: 'testcase' | 'solution', row: any) => {
+  if (!row.is_bound || !row.real_problem_id) {
+    return ElMessage.warning('请先关联真实题目');
+  }
+  drawer.type = type;
+  drawer.problemId = row.real_problem_id;
+  drawer.problemTitle = row.real_problem_title || '';
+  drawer.visible = true;
 };
 
 onMounted(loadDetail);

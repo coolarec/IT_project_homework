@@ -875,10 +875,13 @@ importers:
         version: 11.0.0
       '@vitejs/plugin-basic-ssl':
         specifier: ^2.1.0
-        version: 2.1.0(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)(yaml@2.8.2))
+        version: 2.1.0(vite@5.4.10(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1))
       unplugin-element-plus:
         specifier: 'catalog:'
         version: 0.10.0
+      vite:
+        specifier: 5.4.10
+        version: 5.4.10(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)
 
   docs:
     dependencies:
@@ -10814,6 +10817,37 @@ packages:
     peerDependencies:
       vite: ^3.0.0-0 || ^4.0.0-0 || ^5.0.0-0 || ^6.0.0-0 || ^7.0.0-0
 
+  vite@5.4.10:
+    resolution: {integrity: sha512-1hvaPshuPUtxeQ0hsVH3Mud0ZanOLwVTneA1EgbAM5LhaZEqyPWGRQ7BtaMvUrTDeEaC8pxtj6a6jku3x4z6SQ==}
+    engines: {node: ^18.0.0 || >=20.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || >=20.0.0
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      sass-embedded: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.4.0
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+
   vite@5.4.21:
     resolution: {integrity: sha512-o5a9xKjbtuhY6Bi5S3+HvbRERmouabWbyUcpXXUA1u+GNUKoROi9byOJ8M0nHbHYHkYICiMlqxkg1KkYmm25Sw==}
     engines: {node: ^18.0.0 || >=20.0.0}
@@ -14959,9 +14993,9 @@ snapshots:
     dependencies:
       vite-plugin-pwa: 1.2.0(vite@5.4.21(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1))(workbox-build@7.4.0)(workbox-window@7.4.0)
 
-  '@vitejs/plugin-basic-ssl@2.1.0(vite@7.2.6(@types/node@24.10.1)(jiti@2.6.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)(yaml@2.8.2))':
+  '@vitejs/plugin-basic-ssl@2.1.0(vite@5.4.10(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1))':
     dependencies:
-      vite: 7.2.6(@types/node@24.10.1)(jiti@2.6.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)(yaml@2.8.2)
+      vite: 5.4.10(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)
 
   '@vitejs/plugin-vue-jsx@5.1.2(vite@7.2.6(@types/node@22.19.1)(jiti@1.21.7)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)(yaml@2.8.2))(vue@3.5.25(typescript@5.9.3))':
     dependencies:
@@ -21412,6 +21446,18 @@ snapshots:
       vite: 7.2.6(@types/node@24.10.1)(jiti@2.6.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1)(yaml@2.8.2)
     transitivePeerDependencies:
       - supports-color
+
+  vite@5.4.10(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1):
+    dependencies:
+      esbuild: 0.25.3
+      postcss: 8.5.6
+      rollup: 4.53.3
+    optionalDependencies:
+      '@types/node': 24.10.1
+      fsevents: 2.3.3
+      less: 4.4.2
+      sass: 1.94.2
+      terser: 5.44.1
 
   vite@5.4.21(@types/node@24.10.1)(less@4.4.2)(sass@1.94.2)(terser@5.44.1):
     dependencies:

@@ -52,7 +52,10 @@
     <template #footer>
       <div class="flex items-center justify-between">
         <span>{{ solution.code }}</span>
-        <el-button type="danger" plain @click="deleteSolution(solution.id)">删除</el-button>
+        <div class="flex gap-2">
+          <el-button type="primary" plain @click="copySolution(solution.description)">复制内容</el-button>
+          <el-button type="danger" plain @click="deleteSolution(solution.id)">删除</el-button>
+        </div>
       </div>
     </template>
   </el-card>
@@ -74,6 +77,19 @@ const content = ["未完成", "创作中", "已完成"]
 const deleteSolution = async (id: string) => {
   await deleteSolutionApi(id);
   solutionList.value = await getSolutionsApi(props.activeProblemId)
+}
+
+const copySolution = async (content: string | undefined) => {
+  if (!content) {
+    ElMessage.warning('没有内容可复制');
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(content);
+    ElMessage.success('题解内容已复制到剪贴板');
+  } catch (error) {
+    ElMessage.error('复制失败');
+  }
 }
 const props = defineProps<Props>();
 // 题解表单数据

@@ -89,7 +89,7 @@
               <el-radio :label="false">私有 (指定用户组)</el-radio>
             </el-radio-group>
           </el-form-item>
-          <el-form-item label="允许编辑信息的出题组" v-if="!form.is_public">
+          <el-form-item label="允许编辑信息的出题组" v-if="!form.is_public" required>
             <el-select v-model="form.allowed_group_ids" multiple collapse-tags collapse-tags-tooltip
               placeholder="请选择一个或多个用户组" class="w-full">
               <el-option v-for="group in groupOptions" :key="group.id" :label="group.name" :value="group.id" />
@@ -227,7 +227,7 @@ const openDialog = (type: 'create' | 'edit', row?: any) => {
       contest_start_time: '',
       contest_end_time: '',
       description: '',
-      is_public: 0,
+      is_public: false,
       freeze_time: 3600,
       allowed_group_ids: [] as UUID[]
     });
@@ -236,6 +236,12 @@ const openDialog = (type: 'create' | 'edit', row?: any) => {
 };
 
 const handleSubmit = async () => {
+  // 验证：如果是私有比赛，必须至少选择一个用户组
+  if (!form.is_public && (!form.allowed_group_ids || form.allowed_group_ids.length === 0)) {
+    ElMessage.warning('私有比赛必须至少选择一个用户组');
+    return;
+  }
+
   submitting.value = true;
   try {
     const payload = {

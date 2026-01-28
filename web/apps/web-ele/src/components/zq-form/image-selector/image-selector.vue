@@ -108,6 +108,7 @@ watch(
       path: '',
       url: getFileStreamUrl(String(id)),
     }));
+    console.log('confirmedImages', confirmedImages.value);
   },
   { immediate: true },
 );

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { User, UserProfileUpdateInput } from '#/api/core';
 
-import { reactive, ref, watch } from 'vue';
+import { reactive, ref, watch, computed } from 'vue';
+import { getFileStreamUrl } from '#/api/core/file';
 
 import { $t } from '@vben/locales';
 
@@ -92,6 +93,7 @@ const profileRules = {
  * 加载用户信息
  */
 function loadUserProfile() {
+  console.log('props.userProfile', props.userProfile);
   if (props.userProfile) {
     Object.assign(profileForm, {
       name: props.userProfile.name || '',
@@ -139,6 +141,26 @@ function handleAvatarChange(value: string | string[] | undefined) {
     return;
   }
   profileForm.avatar = Array.isArray(value) ? value[0] || '' : value || '';
+}
+
+// 自动保存头像变更（选中图片后立即更新个人信息）
+async function handleAvatarAutoSave(value: string | string[] | undefined) {
+  handleAvatarChange(value);
+  // 仅在有有效 avatar 值时调用后端保存
+  const avatarId = profileForm.avatar;
+  if (!avatarId) return;
+
+  loading.value = true;
+  try {
+    await patchUserProfileApi({ avatar: avatarId });
+    ElMessage.success($t('user.updateAvatarSuccess') || '头像已更新');
+    // 通知父组件重新加载用户信息
+    emit('success');
+  } catch (error: any) {
+    ElMessage.error(error?.message || $t('user.updateProfileError'));
+  } finally {
+    loading.value = false;
+  }
 }
 
 /**
@@ -192,7 +214,7 @@ loadUserProfile();
             :max-size="2"
             :size="100"
             :placeholder="$t('user.selectAvatar')"
-            @update:model-value="handleAvatarChange"
+            @update:model-value="handleAvatarAutoSave"
           />
           <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {{ $t('user.avatarHelp') }}

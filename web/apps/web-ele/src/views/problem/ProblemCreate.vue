@@ -87,7 +87,8 @@
               <div class="flex items-center gap-2 whitespace-nowrap mb-2">
                 <label class="text-sm  shrink-0" style="width: 80px;color: #323639;">空间限制</label>
                 <el-input-number v-model="form.memory_limit" :min="0" :controls="false" style="width: 140px" />
-                <span class="text-gray-500">kb</span>
+                <el-text>{{ (form.memory_limit )}} MB</el-text>
+                <el-text>-> {{ (form.memory_limit * 1024)}} KB</el-text>
               </div>
               <!-- </el-form-item> -->
               <el-form-item label="难度评级">
@@ -167,7 +168,7 @@
 import { ref, reactive, onMounted,computed } from 'vue';
 import {
   ElCard, ElForm, ElFormItem, ElInput, ElRow, ElCol, ElRate, ElSelect,
-  ElOption, ElButton, ElSwitch, ElIcon, ElDivider, ElMessage, ElInputNumber, ElTooltip
+  ElOption, ElButton, ElSwitch, ElIcon, ElDivider, ElMessage, ElInputNumber, ElTooltip,ElText
 } from 'element-plus';
 import { Upload, Plus } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
@@ -199,7 +200,7 @@ const form = reactive<ProblemDetail>({
   difficulty: 3,
   is_public: false,
   time_limit: 1000,
-  memory_limit: 32768,
+  memory_limit: 256,
   tags: [] as Tag[],
   examples: [{ input_data: '', output_data: '' }],
   step_title_done: 0,
