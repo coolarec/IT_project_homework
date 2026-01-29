@@ -3,9 +3,14 @@ from django.db.models import Q  # 必须导入 Q 对象
 from django.shortcuts import get_object_or_404
 from ninja import Router, File, Form
 import os
+import zipfile
+import tempfile
 from ninja.files import UploadedFile
 from core.file_manager.file_manager_model import FileManager
+from core.file_manager.storage_backends import get_storage_backend
+from django.http import FileResponse, HttpResponse
 from typing import List
+import re
 from common.fu_crud import create, retrieve, delete, batch_delete
 from .models import Tag, Problem, Example, Solution
 from .schemas import ProblemCreateIn, ProblemListOut, ProblemDetailOut, TagOut, SolutionOut, SolutionIn, TestCaseOut, TestCase, TagIn,ProblemUpdateIn,ProblemStatusUpdate
@@ -13,6 +18,7 @@ from core.file_manager.file_manager_services import save_file_to_manager
 from core.user.user_model import User
 from typing import List, Optional
 from uuid import UUID
+from urllib.parse import quote
 
 router = Router(tags=["Problems"])
 
@@ -144,6 +150,89 @@ def list_testcases(request, problem_id: UUID):
     testcases = TestCase.objects.filter(problem=problem)
 
     return testcases
+
+
+
+@router.get("/{problem_id}/testcases/zip")
+def download_testcases(request, problem_id: UUID):
+    """打包并下载指定题目的所有测试点为 zip 文件"""
+    problem = get_object_or_404(Problem, id=problem_id)
+
+    # 权限校验：管理员或出题者可以下载
+    # try:
+    #     user_type = request.auth.user_type
+    # except Exception:
+    #     user_type = None
+
+    # if user_type not in (0, 1) and problem.problem_setter != request.auth:
+    #     return HttpResponse('Forbidden', status=403)
+
+    testcases = TestCase.objects.filter(problem=problem)
+    if not testcases.exists():
+        return HttpResponse('No testcases found', status=404)
+
+    storage = get_storage_backend()
+
+    # 创建临时文件用于写入 zip
+    tmp_file = tempfile.NamedTemporaryFile(suffix='.zip', delete=False)
+    tmp_name = tmp_file.name
+    tmp_file.close()
+
+    try:
+        with zipfile.ZipFile(tmp_name, 'w', zipfile.ZIP_DEFLATED) as zf:
+            for tc in testcases:
+                # 每个测试点包含 input 和 output
+                for kind, file_field, fname in (
+                    ('in', tc.input_file, tc.input_filename),
+                    ('out', tc.output_file, tc.output_filename),
+                ):
+                    if not file_field:
+                        continue
+                    try:
+                        fm = FileManager.objects.get(id=UUID(str(file_field)))
+                    except Exception:
+                        continue
+
+                    arcname = f"{(fname or os.path.basename(fm.storage_path))}"
+
+                    try:
+                        if fm.storage_type == 'local':
+                            full_path = os.path.join(storage.base_path, fm.storage_path)
+                            if os.path.exists(full_path):
+                                zf.write(full_path, arcname)
+                        elif hasattr(storage, 'get_file_content'):
+                            # 读取远端存储内容并写入 zip
+                            file_stream = storage.get_file_content(fm.storage_path)
+                            # file_stream 可能是 file-like 或包含 .data
+                            try:
+                                data = file_stream.read()
+                            except Exception:
+                                data = getattr(file_stream, 'data', None)
+                            if data is not None:
+                                zf.writestr(arcname, data)
+                        else:
+                            # 无法直接访问的存储类型，跳过
+                            continue
+                    except Exception:
+                        # 单个文件打包失败不影响其他文件
+                        continue
+
+
+        zip_name = f"{problem.title}.zip"
+
+        response = FileResponse(
+            open(tmp_name, 'rb'),
+            as_attachment=True,
+        )
+        response['Content-Disposition'] = (
+            f"attachment; filename*=UTF-8''{quote(zip_name)}"
+        )
+        return response
+    finally:
+        try:
+            os.remove(tmp_name)
+        except Exception:
+            pass
 
 
 @router.delete("/testcase/{testcase_id}",response=TestCaseOut)

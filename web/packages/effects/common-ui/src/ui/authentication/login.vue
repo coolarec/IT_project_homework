@@ -171,16 +171,16 @@ defineExpose({
       <ThirdPartyLogin v-if="showThirdPartyLogin" />
     </slot>
 
-<!--    <slot name="to-register">-->
-<!--      <div v-if="showRegister" class="mt-3 text-center text-sm">-->
-<!--        {{ $t('authentication.accountTip') }}-->
-<!--        <span-->
-<!--          class="vben-link text-sm font-normal"-->
-<!--          @click="handleGo(registerPath)"-->
-<!--        >-->
-<!--          {{ $t('authentication.createAccount') }}-->
-<!--        </span>-->
-<!--      </div>-->
-<!--    </slot>-->
+   <slot name="to-register">
+     <div v-if="showRegister" class="mt-3 text-center text-sm">
+       {{ $t('authentication.accountTip') }}
+       <span
+         class="vben-link text-sm font-normal"
+         @click="handleGo(registerPath)"
+       >
+         {{ $t('authentication.createAccount') }}
+       </span>
+     </div>
+   </slot>
   </div>
 </template>
