@@ -22,8 +22,8 @@
 
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
         <el-row :gutter="24">
-          <!-- 左侧：主要信息 (保持不变) -->
-          <el-col :span="16">
+          <!-- 左侧：主要信息 -->
+          <el-col :xs="24" :sm="24" :md="16" :lg="16" :xl="16">
             <el-card shadow="never" class="mb-6 rounded-xl border-none">
               <template #header><span class="font-bold text-lg">题目详情</span></template>
 
@@ -36,10 +36,12 @@
               </el-form-item>
 
               <el-form-item label="输入描述">
-                <el-input v-model="form.input_description" type="textarea" :rows="3" placeholder="如：第一行输入一个整数N..." />
+                <MdEditor v-model="form.input_description" :theme="isDark ? 'dark' : 'light'" style="height: 300px !important;" />
+                <!-- <el-input v-model="form.input_description" type="textarea" :rows="3" placeholder="如：第一行输入一个整数N..." /> -->
               </el-form-item>
               <el-form-item label="输出描述">
-                <el-input v-model="form.output_description" type="textarea" :rows="3" placeholder="如：输出N行结果..." />
+                <MdEditor v-model="form.output_description" :theme="isDark ? 'dark' : 'light'" style="height: 300px !important;" />
+                <!-- <el-input v-model="form.output_description" type="textarea" :rows="3" placeholder="如：输出N行结果..." /> -->
               </el-form-item>
             </el-card>
 
@@ -79,7 +81,7 @@
           </el-col>
 
           <!-- 右侧：属性配置 -->
-          <el-col :span="8">
+          <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
             <el-card shadow="never" class="mb-6 rounded-xl border-none sticky top-4">
               <template #header><span class="font-bold">基础设置</span></template>
               <div class="flex items-center gap-2 whitespace-nowrap mb-2">
@@ -91,7 +93,8 @@
               <div class="flex items-center gap-2 whitespace-nowrap mb-2">
                 <label class="text-sm shrink-0" style="width: 80px;color: #323639;">空间限制</label>
                 <el-input-number v-model="form.memory_limit" :min="0" :controls="false" style="width: 140px" />
-                <span class="text-gray-500">kb</span>
+                <el-text> MB</el-text>
+                <el-text>-> {{ ((form.memory_limit ?? 0) * 1024) }} KB</el-text>
               </div>
 
               <el-form-item label="难度评级">
@@ -117,7 +120,7 @@
               </el-form-item>
 
               <el-form-item label="题目提示 (Hints)">
-                <el-input v-model="form.analysis" type="textarea" :rows="6" placeholder="输入解题提示（可留空）" />
+                <MdEditor v-model="form.analysis" :theme="isDark ? 'dark' : 'light'" style="height: 200px !important;" />
               </el-form-item>
 
               <!-- 这里修改为两个按钮 -->
@@ -180,7 +183,7 @@ import { ref, reactive, onMounted, watch, computed } from 'vue';
 import {
   ElCard, ElForm, ElFormItem, ElInput, ElRow, ElCol, ElRate, ElSelect,
   ElOption, ElButton, ElSwitch, ElIcon, ElDivider, ElMessage, ElInputNumber, ElMessageBox,
-  ElTooltip
+  ElTooltip,ElText
 } from 'element-plus';
 import { Upload, Plus, ArrowLeft } from '@element-plus/icons-vue';
 import type { FormInstance } from 'element-plus';
