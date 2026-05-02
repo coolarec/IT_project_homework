@@ -194,6 +194,17 @@ const fetchList = async () => {
   }
 };
 
+const resetForm = () => {
+  currentId.value = '';
+  form.title = '';
+  form.contest_start_time = '';
+  form.contest_end_time = '';
+  form.description = '';
+  form.freeze_time = 3600;
+  form.is_public = false;
+  form.allowed_group_ids = [] as UUID[];
+};
+
 // 状态判断
 const getStatusTag = (row: any) => {
   const now = new Date().getTime();
@@ -220,6 +231,9 @@ const getStatusText = (row: any) => {
 // 弹窗操作
 const openDialog = (type: 'create' | 'edit', row?: any) => {
   dialogType.value = type;
+  if (type === 'create') {
+    resetForm();
+  }
   if (type === 'edit' && row) {
     currentId.value = row.id;
     form.title = row.title;
