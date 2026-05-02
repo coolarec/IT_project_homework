@@ -137,6 +137,13 @@ const tableData = ref<ContestListItem[]>([]);
 const searchKeyword = ref('');
 const groupOptions = ref<UserGroup[]>([]);
 
+const parseTime = (value?: string) => {
+  if (!value) {
+    return Number.NaN;
+  }
+  return new Date(value).getTime();
+};
+
 // 弹窗逻辑
 const dialogVisible = ref(false);
 const dialogType = ref<'create' | 'edit'>('create');
@@ -189,23 +196,22 @@ const fetchList = async () => {
 // 状态判断
 const getStatusTag = (row: any) => {
   const now = new Date().getTime();
-  const pstart = new Date(row.prepare_start_time).getTime();
-  const pend = new Date(row.prepare_end_time).getTime();
-
-  const start = new Date(row.contest_start_time).getTime();
-  const end = new Date(row.contest_end_time).getTime();
-  if (now < pstart) return 'info';
-  if (now < pend) return 'info';
-  if (now < start) return 'info';
+  const pstart = parseTime(row.prepare_start_time);
+  const pend = parseTime(row.prepare_end_time);
+  const start = parseTime(row.contest_start_time);
+  const end = parseTime(row.contest_end_time);
+  if (!Number.isNaN(pstart) && now < pstart) return 'info';
+  if (!Number.isNaN(pend) && now < pend) return 'info';
+  if (!Number.isNaN(start) && now < start) return 'info';
   if (now > end) return 'danger';
   return 'success';
 };
 
 const getStatusText = (row: any) => {
   const now = new Date().getTime();
-  const start = new Date(row.contest_start_time).getTime();
-  const end = new Date(row.contest_end_time).getTime();
-  if (now < start) return '未开始';
+  const start = parseTime(row.contest_start_time);
+  const end = parseTime(row.contest_end_time);
+  if (!Number.isNaN(start) && now < start) return '未开始';
   if (now > end) return '已结束';
   return '进行中';
 };
