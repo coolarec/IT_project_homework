@@ -126,10 +126,11 @@ def get_userinfo(request):
     if not user_info:
         raise HttpError(message="未授权", status_code=401)
 
+    user_id = user_info.id
     user = get_object_or_404(User, id=user_info.id)
 
     return UserInfoOut(
-        id=str(user.pk),
+        id=str(user_id),
         username=user.username,
         realName=user.name,
         avatar=user.avatar,
