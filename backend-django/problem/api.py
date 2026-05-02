@@ -87,11 +87,12 @@ def getProblemStatus(request,problem_id:UUID):
     return problem
 
 @router.patch('/{problem_id}/status',response=ProblemStatusUpdate)
-def getProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
+def updateProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
     problem=get_object_or_404(Problem,id=problem_id)
     update_data = data.dict(exclude_unset=True)
     for attr,value in update_data.items():
         setattr(problem,attr,value)
+    problem.save()
     return problem
 
 
