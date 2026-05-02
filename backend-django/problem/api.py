@@ -78,7 +78,6 @@ def update_problem(
 
 @router.delete("/{problem_id}",response=ProblemDetailOut)
 def delete_problem(request,problem_id:UUID):
-    problem = get_object_or_404(Problem,id=problem_id)
     return delete(problem_id,Problem)
 
 @router.get('/{problem_id}/status',response=ProblemStatusUpdate)
