@@ -49,6 +49,7 @@ def login(request, data: LoginIn):
     """
     ip_address = get_request_ip(request)
     user_agent = request.META.get('HTTP_USER_AGENT', '')
+    login_username = data.username or data.mobile
 
     try:
         # 使用认证服务进行用户认证
@@ -64,7 +65,6 @@ def login(request, data: LoginIn):
         access_token, refresh_token, expire_time = AuthService.create_token_response(user)
 
         # 记录登录会话到新的登录日志系统
-        login_username = data.username or data.mobile
         AuthService.record_login_session(user, login_username, ip_address, user_agent)
 
         return LoginOut(
