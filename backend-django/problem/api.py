@@ -147,7 +147,7 @@ def list_testcases(request, problem_id: UUID):
     problem = get_object_or_404(Problem, id=problem_id)
 
     # 获取该题目下的所有测试用例
-    testcases = TestCase.objects.filter(problem=problem)
+    testcases = TestCase.objects.filter(problem=problem).order_by('created_at')
 
     return testcases
 
