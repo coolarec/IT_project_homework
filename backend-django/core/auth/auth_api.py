@@ -26,6 +26,15 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+def raise_auth_error(message: str):
+    """Map auth service errors to consistent HTTP responses."""
+    if "频繁" in message:
+        raise HttpError(status_code=429, message=message)
+    if "禁用" in message or "锁定" in message:
+        raise HttpError(status_code=403, message=message)
+    raise HttpError(status_code=401, message=message)
+
+
 @router.post("/login", response=LoginOut, auth=None, summary="用户登录")
 def login(request, data: LoginIn):
     """
@@ -67,14 +76,7 @@ def login(request, data: LoginIn):
             expireTime=expire_time,
         )
     except ValueError as e:
-        # 根据错误信息返回对应的HTTP状态码
-        error_msg = str(e)
-        if "频繁" in error_msg:
-            raise HttpError(status_code=429, message=error_msg)
-        elif "禁用" in error_msg or "锁定" in error_msg:
-            raise HttpError(status_code=403, message=error_msg)
-        else:
-            raise HttpError(status_code=401, message=error_msg)
+        raise_auth_error(str(e))
 
 
 @router.post("/refresh_token", response=LoginOut, auth=None, summary="刷新访问令牌")
@@ -98,13 +100,7 @@ def refresh_token(request):
             expireTime=access_token_expire,
         )
     except ValueError as e:
-        error_msg = str(e)
-        if "频繁" in error_msg:
-            raise HttpError(message=error_msg, status_code=429)
-        elif "禁用" in error_msg:
-            raise HttpError(message=error_msg, status_code=403)
-        else:
-            raise HttpError(message=error_msg, status_code=401)
+        raise_auth_error(str(e))
     except Exception as e:
         logger.error(f"刷新令牌错误: {str(e)}", exc_info=True)
         raise HttpError(message="内部服务器错误", status_code=500)
