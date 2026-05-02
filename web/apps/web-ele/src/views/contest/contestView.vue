@@ -182,7 +182,8 @@ const contestRange = computed({
 const fetchList = async () => {
   loading.value = true;
   try {
-    const res = await getContestListApi({ keyword: searchKeyword.value });
+    const keyword = searchKeyword.value.trim();
+    const res = await getContestListApi({ keyword });
     tableData.value = res;
     // 获取用户组用于下拉选择
     groupOptions.value = await getGroupListApi();
