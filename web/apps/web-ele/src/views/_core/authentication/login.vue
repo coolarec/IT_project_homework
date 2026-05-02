@@ -61,6 +61,7 @@ const formSchema = computed((): VbenFormSchema[] => {
       componentProps: {
         autocomplete: 'username',
         clearable: true,
+        maxlength: 64,
         placeholder: $t('authentication.usernameTip'),
       },
       // dependencies: {
@@ -88,6 +89,7 @@ const formSchema = computed((): VbenFormSchema[] => {
       component: 'VbenInputPassword',
       componentProps: {
         autocomplete: 'current-password',
+        showPassword: true,
         placeholder: $t('authentication.password'),
       },
       defaultValue: '',
