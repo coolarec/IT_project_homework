@@ -26,6 +26,15 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+def raise_auth_error(message: str):
+    """Map auth service errors to consistent HTTP responses."""
+    if "频繁" in message:
+        raise HttpError(status_code=429, message=message)
+    if "禁用" in message or "锁定" in message:
+        raise HttpError(status_code=403, message=message)
+    raise HttpError(status_code=401, message=message)
+
+
 @router.post("/login", response=LoginOut, auth=None, summary="用户登录")
 def login(request, data: LoginIn):
     """
@@ -40,6 +49,7 @@ def login(request, data: LoginIn):
     """
     ip_address = get_request_ip(request)
     user_agent = request.META.get('HTTP_USER_AGENT', '')
+    login_username = data.username or data.mobile
 
     try:
         # 使用认证服务进行用户认证
@@ -55,7 +65,6 @@ def login(request, data: LoginIn):
         access_token, refresh_token, expire_time = AuthService.create_token_response(user)
 
         # 记录登录会话到新的登录日志系统
-        login_username = data.username or data.mobile
         AuthService.record_login_session(user, login_username, ip_address, user_agent)
 
         return LoginOut(
@@ -67,14 +76,7 @@ def login(request, data: LoginIn):
             expireTime=expire_time,
         )
     except ValueError as e:
-        # 根据错误信息返回对应的HTTP状态码
-        error_msg = str(e)
-        if "频繁" in error_msg:
-            raise HttpError(status_code=429, message=error_msg)
-        elif "禁用" in error_msg or "锁定" in error_msg:
-            raise HttpError(status_code=403, message=error_msg)
-        else:
-            raise HttpError(status_code=401, message=error_msg)
+        raise_auth_error(str(e))
 
 
 @router.post("/refresh_token", response=LoginOut, auth=None, summary="刷新访问令牌")
@@ -98,13 +100,7 @@ def refresh_token(request):
             expireTime=access_token_expire,
         )
     except ValueError as e:
-        error_msg = str(e)
-        if "频繁" in error_msg:
-            raise HttpError(message=error_msg, status_code=429)
-        elif "禁用" in error_msg:
-            raise HttpError(message=error_msg, status_code=403)
-        else:
-            raise HttpError(message=error_msg, status_code=401)
+        raise_auth_error(str(e))
     except Exception as e:
         logger.error(f"刷新令牌错误: {str(e)}", exc_info=True)
         raise HttpError(message="内部服务器错误", status_code=500)
@@ -130,10 +126,11 @@ def get_userinfo(request):
     if not user_info:
         raise HttpError(message="未授权", status_code=401)
 
+    user_id = user_info.id
     user = get_object_or_404(User, id=user_info.id)
 
     return UserInfoOut(
-        id=str(user.pk),
+        id=str(user_id),
         username=user.username,
         realName=user.name,
         avatar=user.avatar,
