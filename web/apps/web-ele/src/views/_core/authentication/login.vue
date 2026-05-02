@@ -59,6 +59,9 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       component: 'VbenInput',
       componentProps: {
+        autocomplete: 'username',
+        clearable: true,
+        maxlength: 64,
         placeholder: $t('authentication.usernameTip'),
       },
       // dependencies: {
@@ -85,6 +88,8 @@ const formSchema = computed((): VbenFormSchema[] => {
     {
       component: 'VbenInputPassword',
       componentProps: {
+        autocomplete: 'current-password',
+        showPassword: true,
         placeholder: $t('authentication.password'),
       },
       defaultValue: '',
@@ -102,17 +107,20 @@ const formSchema = computed((): VbenFormSchema[] => {
   ];
 });
 
+const redirectToOAuth = (url?: string) => {
+  if (url) {
+    window.location.href = url;
+    return true;
+  }
+  ElMessage.error($t('authentication.getAuthUrlFailed'));
+  return false;
+};
+
 // Gitee OAuth 登录
 async function handleGiteeLogin() {
   try {
     const data = await getGiteeAuthorizeUrlApi();
-    // requestClient 配置了 responseReturn: 'body'，直接返回 data
-    if (data?.authorize_url) {
-      // 重定向到 Gitee 授权页面
-      window.location.href = data.authorize_url;
-    } else {
-      ElMessage.error($t('authentication.getAuthUrlFailed'));
-    }
+    redirectToOAuth(data?.authorize_url);
   } catch (error) {
     console.error('Gitee 登录失败:', error);
     ElMessage.error($t('authentication.giteeLoginFailed'));

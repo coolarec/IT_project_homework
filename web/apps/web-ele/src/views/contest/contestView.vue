@@ -137,6 +137,13 @@ const tableData = ref<ContestListItem[]>([]);
 const searchKeyword = ref('');
 const groupOptions = ref<UserGroup[]>([]);
 
+const parseTime = (value?: string) => {
+  if (!value) {
+    return Number.NaN;
+  }
+  return new Date(value).getTime();
+};
+
 // 弹窗逻辑
 const dialogVisible = ref(false);
 const dialogType = ref<'create' | 'edit'>('create');
@@ -175,7 +182,8 @@ const contestRange = computed({
 const fetchList = async () => {
   loading.value = true;
   try {
-    const res = await getContestListApi({ keyword: searchKeyword.value });
+    const keyword = searchKeyword.value.trim();
+    const res = await getContestListApi({ keyword });
     tableData.value = res;
     // 获取用户组用于下拉选择
     groupOptions.value = await getGroupListApi();
@@ -186,26 +194,36 @@ const fetchList = async () => {
   }
 };
 
+const resetForm = () => {
+  currentId.value = '';
+  form.title = '';
+  form.contest_start_time = '';
+  form.contest_end_time = '';
+  form.description = '';
+  form.freeze_time = 3600;
+  form.is_public = false;
+  form.allowed_group_ids = [] as UUID[];
+};
+
 // 状态判断
 const getStatusTag = (row: any) => {
   const now = new Date().getTime();
-  const pstart = new Date(row.prepare_start_time).getTime();
-  const pend = new Date(row.prepare_end_time).getTime();
-
-  const start = new Date(row.contest_start_time).getTime();
-  const end = new Date(row.contest_end_time).getTime();
-  if (now < pstart) return 'info';
-  if (now < pend) return 'info';
-  if (now < start) return 'info';
+  const pstart = parseTime(row.prepare_start_time);
+  const pend = parseTime(row.prepare_end_time);
+  const start = parseTime(row.contest_start_time);
+  const end = parseTime(row.contest_end_time);
+  if (!Number.isNaN(pstart) && now < pstart) return 'info';
+  if (!Number.isNaN(pend) && now < pend) return 'info';
+  if (!Number.isNaN(start) && now < start) return 'info';
   if (now > end) return 'danger';
   return 'success';
 };
 
 const getStatusText = (row: any) => {
   const now = new Date().getTime();
-  const start = new Date(row.contest_start_time).getTime();
-  const end = new Date(row.contest_end_time).getTime();
-  if (now < start) return '未开始';
+  const start = parseTime(row.contest_start_time);
+  const end = parseTime(row.contest_end_time);
+  if (!Number.isNaN(start) && now < start) return '未开始';
   if (now > end) return '已结束';
   return '进行中';
 };
@@ -213,6 +231,9 @@ const getStatusText = (row: any) => {
 // 弹窗操作
 const openDialog = (type: 'create' | 'edit', row?: any) => {
   dialogType.value = type;
+  if (type === 'create') {
+    resetForm();
+  }
   if (type === 'edit' && row) {
     currentId.value = row.id;
     form.title = row.title;
