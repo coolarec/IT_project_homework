@@ -10,6 +10,17 @@
       <div class="flex items-center gap-3">
         <el-input v-model="searchKeyword" placeholder="搜索比赛名称..." class="w-64" :prefix-icon="Search" clearable
           @clear="fetchList" @keyup.enter="fetchList" />
+        <el-select v-model="visibilityFilter" class="w-36" @change="fetchList">
+          <el-option label="全部权限" value="all" />
+          <el-option label="公开赛" value="public" />
+          <el-option label="私有赛" value="private" />
+        </el-select>
+        <el-select v-model="statusFilter" class="w-36" @change="fetchList">
+          <el-option label="全部状态" value="all" />
+          <el-option label="未开始" value="pending" />
+          <el-option label="进行中" value="running" />
+          <el-option label="已结束" value="finished" />
+        </el-select>
         <el-button type="primary" @click="fetchList">搜索</el-button>
         <el-button type="success" :icon="Plus" @click="openDialog('create')">
           新增比赛
@@ -59,6 +70,9 @@
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="!loading && tableData.length === 0" class="empty-state">
+        当前筛选条件下没有比赛，调整筛选后再试试。
+      </div>
     </el-card>
 
     <!-- 新增/编辑弹窗 -->
@@ -136,6 +150,8 @@ const submitting = ref(false);
 const tableData = ref<ContestListItem[]>([]);
 const searchKeyword = ref('');
 const groupOptions = ref<UserGroup[]>([]);
+const visibilityFilter = ref<'all' | 'public' | 'private'>('all');
+const statusFilter = ref<'all' | 'finished' | 'pending' | 'running'>('all');
 
 const parseTime = (value?: string) => {
   if (!value) {
@@ -183,7 +199,12 @@ const fetchList = async () => {
   loading.value = true;
   try {
     const keyword = searchKeyword.value.trim();
-    const res = await getContestListApi({ keyword });
+    const isPublic =
+      visibilityFilter.value === 'all'
+        ? undefined
+        : visibilityFilter.value === 'public';
+    const status = statusFilter.value === 'all' ? undefined : statusFilter.value;
+    const res = await getContestListApi({ keyword, is_public: isPublic, status });
     tableData.value = res;
     // 获取用户组用于下拉选择
     groupOptions.value = await getGroupListApi();
@@ -257,6 +278,21 @@ const openDialog = (type: 'create' | 'edit', row?: any) => {
 };
 
 const handleSubmit = async () => {
+  if (!form.title.trim()) {
+    ElMessage.warning('比赛标题不能为空');
+    return;
+  }
+
+  if (!form.contest_start_time || !form.contest_end_time) {
+    ElMessage.warning('请选择完整的比赛起止时间');
+    return;
+  }
+
+  if (parseTime(form.contest_start_time) >= parseTime(form.contest_end_time)) {
+    ElMessage.warning('比赛结束时间必须晚于开始时间');
+    return;
+  }
+
   // 验证：如果是私有比赛，必须至少选择一个用户组
   if (!form.is_public && (!form.allowed_group_ids || form.allowed_group_ids.length === 0)) {
     ElMessage.warning('私有比赛必须至少选择一个用户组');
@@ -307,5 +343,11 @@ onMounted(fetchList);
 
 :deep(.el-table) {
   border-radius: 0 0 12px 12px;
+}
+
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: #909399;
 }
 </style>

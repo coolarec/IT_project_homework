@@ -1,13 +1,14 @@
-from typing import List
+from datetime import datetime
+from typing import List, Optional
 from uuid import UUID
+
 from django.shortcuts import get_object_or_404
-from ninja import Router
+from django.utils import timezone
+from ninja import Query, Router
 from ninja.errors import HttpError
-from typing import Optional
 from django.db.models import Count
 from django.db import transaction
 from django.db.models import Q
-from ninja import Query
 from django.db.models import Count, F
 
 
@@ -27,6 +28,36 @@ from .filters import ContestFilter
 from common.fu_crud import create, update, delete, retrieve, get_or_none
 
 router = Router(tags=["竞赛管理"])
+
+
+def ensure_contest_owner(request, contest: Contest) -> Contest:
+    if request.auth.is_superuser or str(contest.creator_id) == str(request.auth.id):
+        return contest
+    raise HttpError(403, "只有创建者可以管理此竞赛")
+
+
+def validate_contest_payload(data: ContestIn | ContestUpdteIn):
+    start_time = getattr(data, 'contest_start_time', None)
+    end_time = getattr(data, 'contest_end_time', None)
+    is_public = getattr(data, 'is_public', None)
+    allowed_group_ids = getattr(data, 'allowed_group_ids', None)
+
+    if start_time and end_time and start_time >= end_time:
+        raise HttpError(400, "比赛结束时间必须晚于开始时间")
+
+    if is_public is False and allowed_group_ids is not None and len(allowed_group_ids) == 0:
+        raise HttpError(400, "私有比赛至少需要绑定一个用户组")
+
+
+def annotate_contest_status(contest: Contest) -> Contest:
+    now = timezone.now()
+    if contest.contest_start_time and now < contest.contest_start_time:
+        contest.status = "pending"
+    elif contest.contest_end_time and now > contest.contest_end_time:
+        contest.status = "finished"
+    else:
+        contest.status = "running"
+    return contest
 
 # ================= 用户组管理  =================
 @router.post("/groups", response=UserGroupOut, summary="创建用户组")
@@ -101,6 +132,7 @@ def remove_group_members(request, id: str, data: GroupDeleteMembersIn):
 
 @router.post("/contests", response=ContestOut, summary="创建竞赛")
 def create_contest(request, data: ContestIn):
+    validate_contest_payload(data)
     payload = data.dict(exclude={'allowed_group_ids'})
     
     with transaction.atomic():
@@ -115,7 +147,12 @@ def create_contest(request, data: ContestIn):
     return instance
 
 @router.get("/contests", response=List[ContestListOut], summary="获取竞赛列表")
-def list_contests(request, filters: ContestFilter = Query(...)):
+def list_contests(
+    request,
+    filters: ContestFilter = Query(...),
+    is_public: Optional[bool] = None,
+    status: Optional[str] = None,
+):
     user = request.auth
     qs = Contest.objects.select_related('creator').all()
 
@@ -127,8 +164,20 @@ def list_contests(request, filters: ContestFilter = Query(...)):
     if filters.title:
         qs = qs.filter(title__icontains=filters.title)
 
+    if is_public is not None:
+        qs = qs.filter(is_public=is_public)
+
+    now = timezone.now()
+    if status == "pending":
+        qs = qs.filter(contest_start_time__gt=now)
+    elif status == "running":
+        qs = qs.filter(contest_start_time__lte=now, contest_end_time__gte=now)
+    elif status == "finished":
+        qs = qs.filter(contest_end_time__lt=now)
+
     for item in qs:
         item.creator_name = item.creator.username if item.creator else "未知"
+        annotate_contest_status(item)
         
     return qs
 
@@ -151,6 +200,8 @@ def list_contests(request, filters: ContestFilter = Query(...)):
 @router.patch("/contests/{id}", response=ContestOut, summary="更新竞赛")
 def update_contest(request, id: str, data: ContestUpdteIn):
     instance = get_object_or_404(Contest, id=id)
+    ensure_contest_owner(request, instance)
+    validate_contest_payload(data)
     
     update_data = data.dict(exclude={'allowed_group_ids'}, exclude_unset=True)
     
@@ -170,9 +221,8 @@ def update_contest(request, id: str, data: ContestUpdteIn):
 @router.delete("/contests/{id}", response=ContestOut, summary="删除竞赛")
 def delete_contest(request, id: str):
     instance = get_object_or_404(Contest, id=id)
-    if str(instance.creator_id) != str(request.auth.id):
-        raise HttpError(403, "只有创建者可以删除此竞赛")
-        
+    ensure_contest_owner(request, instance)
+
     return delete(id, Contest)
 
 # ================= 虚拟题目管理 (VirtualProblem) =================
@@ -230,6 +280,7 @@ def get_contest_detail(request, id: UUID):
 @router.post("/contests/{id}/virtual-problems", response=VirtualProblemOut)
 def create_virtual_problem(request, id: UUID, data: VirtualProblemIn):
     contest = get_object_or_404(Contest, id=id)
+    ensure_contest_owner(request, contest)
     vp = VirtualProblem.objects.create(
         contest=contest,
         author=request.auth,
@@ -240,6 +291,7 @@ def create_virtual_problem(request, id: UUID, data: VirtualProblemIn):
 @router.patch("/virtual-problems/{id}", response=VirtualProblemOut)
 def update_virtual_problem(request, id: UUID, data: VirtualProblemIn):
     instance = get_object_or_404(VirtualProblem, id=id)
+    ensure_contest_owner(request, instance.contest)
     for attr, value in data.dict(exclude_unset=True).items():
         setattr(instance, attr, value)
     instance.save()
@@ -248,6 +300,7 @@ def update_virtual_problem(request, id: UUID, data: VirtualProblemIn):
 @router.patch("/virtual-problems/{id}/bind", response=VirtualProblemOut)
 def bind_virtual_problem(request, id: UUID, data: VirtualProblemBindIn):
     instance = get_object_or_404(VirtualProblem, id=id)
+    ensure_contest_owner(request, instance.contest)
     real_p = get_object_or_404(Problem, id=data.real_problem_id)
     instance.real_problem = real_p
     instance.is_bound = True
@@ -257,6 +310,7 @@ def bind_virtual_problem(request, id: UUID, data: VirtualProblemBindIn):
 @router.delete("/virtual-problems/{id}",response=VirtualProblemOut)
 def delete_virtual_problem(request, id: UUID):
     instance = get_object_or_404(VirtualProblem, id=id)
+    ensure_contest_owner(request, instance.contest)
     instance.delete()
     return instance
 
