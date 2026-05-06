@@ -37,6 +37,78 @@ class AuthService:
     """认证服务类 - 处理所有与认证相关的业务逻辑"""
 
     @staticmethod
+    def _record_failed_login(
+            username: str,
+            ip_address: str,
+            failure_reason: int,
+            failure_message: str,
+            user_agent: str = None,
+    ) -> None:
+        """统一记录失败登录，避免各分支重复散落。"""
+        try:
+            LoginLogService.record_failed_login(
+                username=username,
+                login_ip=ip_address,
+                failure_reason=failure_reason,
+                failure_message=failure_message,
+                user_agent=user_agent,
+            )
+        except Exception as e:
+            logger.warning(f"记录登录失败日志出错: {str(e)}")
+
+    @staticmethod
+    def _ensure_user_can_login(
+            user: User,
+            identifier: str,
+            login_username: str,
+            ip_address: str,
+            user_agent: str = None,
+    ) -> None:
+        """校验账户当前是否允许登录。"""
+        if not user.is_active:
+            LoginAttemptProtection.record_login_failure(identifier, ip_address)
+            AuthService._record_failed_login(
+                username=login_username,
+                ip_address=ip_address,
+                failure_reason=5,
+                failure_message="账户已被禁用",
+                user_agent=user_agent,
+            )
+            raise ValueError("账户已被禁用")
+
+        status_error_map = {
+            0: (3, "用户已禁用", "账户已被禁用"),
+            2: (4, "用户已锁定", "账户已被锁定，请联系管理员"),
+        }
+        status_error = status_error_map.get(user.user_status)
+        if not status_error:
+            return
+
+        LoginAttemptProtection.record_login_failure(identifier, ip_address)
+        failure_reason, failure_message, client_message = status_error
+        AuthService._record_failed_login(
+            username=login_username,
+            ip_address=ip_address,
+            failure_reason=failure_reason,
+            failure_message=failure_message,
+            user_agent=user_agent,
+        )
+        raise ValueError(client_message)
+
+    @staticmethod
+    def _extract_bearer_token(request) -> str:
+        """从请求头中提取 Bearer token。"""
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if not auth_header:
+            raise ValueError("缺少授权头")
+
+        parts = auth_header.split()
+        if len(parts) != 2 or parts[0].lower() != 'bearer':
+            raise ValueError("无效的授权头格式")
+
+        return parts[1]
+
+    @staticmethod
     def authenticate_user(
             username: str,
             mobile: str,
@@ -68,16 +140,13 @@ class AuthService:
         is_allowed, message = LoginAttemptProtection.check_login_attempt(identifier, ip_address)
         if not is_allowed:
             # 记录被限制的登录尝试
-            try:
-                LoginLogService.record_failed_login(
-                    username=login_username,
-                    login_ip=ip_address,
-                    failure_reason=7,  # 其他错误
-                    failure_message="登录尝试过于频繁，已被限制",
-                    user_agent=user_agent,
-                )
-            except Exception as e:
-                logger.warning(f"记录被限制登录失败: {str(e)}")
+            AuthService._record_failed_login(
+                username=login_username,
+                ip_address=ip_address,
+                failure_reason=7,
+                failure_message="登录尝试过于频繁，已被限制",
+                user_agent=user_agent,
+            )
             raise ValueError(message)
 
         # 查找用户
@@ -89,90 +158,43 @@ class AuthService:
         # 用户不存在
         if user is None:
             LoginAttemptProtection.record_login_failure(identifier, ip_address)
-            # 记录失败登录：用户不存在
-            try:
-                LoginLogService.record_failed_login(
-                    username=login_username,
-                    login_ip=ip_address,
-                    failure_reason=1,  # 用户不存在
-                    failure_message="用户不存在",
-                    user_agent=user_agent,
-                )
-            except Exception as e:
-                logger.warning(f"记录登录失败日志出错: {str(e)}")
+            AuthService._record_failed_login(
+                username=login_username,
+                ip_address=ip_address,
+                failure_reason=1,
+                failure_message="用户不存在",
+                user_agent=user_agent,
+            )
             raise ValueError("用户名或密码错误")
 
-        # 账户被禁用
-        if not user.is_active:
-            LoginAttemptProtection.record_login_failure(identifier, ip_address)
-            # 记录失败登录：用户不激活
-            try:
-                LoginLogService.record_failed_login(
-                    username=login_username,
-                    login_ip=ip_address,
-                    failure_reason=5,  # 用户不激活
-                    failure_message="账户已被禁用",
-                    user_agent=user_agent,
-                )
-            except Exception as e:
-                logger.warning(f"记录登录失败日志出错: {str(e)}")
-            raise ValueError("账户已被禁用")
-
-        # 检查用户状态（禁用、锁定）
-        if user.user_status == 0:  # 禁用
-            LoginAttemptProtection.record_login_failure(identifier, ip_address)
-            # 记录失败登录：用户已禁用
-            try:
-                LoginLogService.record_failed_login(
-                    username=login_username,
-                    login_ip=ip_address,
-                    failure_reason=3,  # 用户已禁用
-                    failure_message="用户已禁用",
-                    user_agent=user_agent,
-                )
-            except Exception as e:
-                logger.warning(f"记录登录失败日志出错: {str(e)}")
-            raise ValueError("账户已被禁用")
-
-        if user.user_status == 2:  # 锁定
-            LoginAttemptProtection.record_login_failure(identifier, ip_address)
-            # 记录失败登录：用户已锁定
-            try:
-                LoginLogService.record_failed_login(
-                    username=login_username,
-                    login_ip=ip_address,
-                    failure_reason=4,  # 用户已锁定
-                    failure_message="用户已锁定",
-                    user_agent=user_agent,
-                )
-            except Exception as e:
-                logger.warning(f"记录登录失败日志出错: {str(e)}")
-            raise ValueError("账户已被锁定，请联系管理员")
+        AuthService._ensure_user_can_login(
+            user=user,
+            identifier=identifier,
+            login_username=login_username,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
         # 密码错误
         if not user.check_password(password):
             LoginAttemptProtection.record_login_failure(identifier, ip_address)
-            # 记录失败登录：密码错误
-            try:
-                LoginLogService.record_failed_login(
-                    username=login_username,
-                    login_ip=ip_address,
-                    failure_reason=2,  # 密码错误
-                    failure_message="密码验证失败",
-                    user_agent=user_agent,
-                )
+            AuthService._record_failed_login(
+                username=login_username,
+                ip_address=ip_address,
+                failure_reason=2,
+                failure_message="密码验证失败",
+                user_agent=user_agent,
+            )
 
-                # 检查是否应该锁定账户（防止暴力破解）
-                if LoginLogService.check_user_locked(
-                        username=login_username,
-                        failed_threshold=5,
-                        hours=1
-                ):
-                    user.user_status = 2  # 锁定用户
-                    user.save(update_fields=['user_status'])
-                    logger.warning(f"用户 {login_username} 因多次失败登录已被锁定")
-            except Exception as e:
-                logger.warning(f"记录登录失败日志出错: {str(e)}")
+            # 检查是否应该锁定账户（防止暴力破解）
+            if LoginLogService.check_user_locked(
+                    username=login_username,
+                    failed_threshold=5,
+                    hours=1
+            ):
+                user.user_status = 2
+                user.save(update_fields=['user_status'])
+                logger.warning(f"用户 {login_username} 因多次失败登录已被锁定")
             raise ValueError("用户名或密码错误")
 
         # 认证成功，清除失败记录
@@ -266,15 +288,7 @@ class AuthService:
             raise ValueError("账户已被禁用")
 
         # 获取 refresh token
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        if not auth_header:
-            raise ValueError("缺少授权头")
-
-        parts = auth_header.split()
-        if len(parts) != 2 or parts[0].lower() != 'bearer':
-            raise ValueError("无效的授权头格式")
-
-        refresh_token_str = parts[1]
+        refresh_token_str = AuthService._extract_bearer_token(request)
 
         # 检查 refresh token 是否在黑名单中
         if TokenBlacklist.is_blacklisted(refresh_token_str, user.id):
@@ -311,26 +325,27 @@ class AuthService:
         user_id = user_info.id
 
         # 从请求头获取 token
-        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
-        if auth_header.startswith('Bearer '):
-            token = auth_header[7:]
+        try:
+            token = AuthService._extract_bearer_token(request)
+        except ValueError:
+            return
 
-            try:
-                # 解码 token 获取过期时间
-                payload = jwt.decode(
-                    token,
-                    settings.JWT_ACCESS_SECRET_KEY,
-                    algorithms=[settings.JWT_ALGORITHM]
-                )
-                exp_time = payload.get('exp', 0)
+        try:
+            # 解码 token 获取过期时间
+            payload = jwt.decode(
+                token,
+                settings.JWT_ACCESS_SECRET_KEY,
+                algorithms=[settings.JWT_ALGORITHM]
+            )
+            exp_time = payload.get('exp', 0)
 
-                # 将 token 加入黑名单
-                TokenBlacklist.add_to_blacklist(token, user_id, exp_time)
-                logger.info(f"用户 {user_id} 的令牌已加入黑名单")
-            except jwt.ExpiredSignatureError:
-                logger.info(f"用户 {user_id} 的令牌已过期")
-            except jwt.InvalidTokenError as e:
-                logger.warning(f"无效的令牌: {str(e)}")
+            # 将 token 加入黑名单
+            TokenBlacklist.add_to_blacklist(token, user_id, exp_time)
+            logger.info(f"用户 {user_id} 的令牌已加入黑名单")
+        except jwt.ExpiredSignatureError:
+            logger.info(f"用户 {user_id} 的令牌已过期")
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"无效的令牌: {str(e)}")
 
     @staticmethod
     def get_user_permission_codes(user: User) -> List[str]:
