@@ -78,7 +78,6 @@ def update_problem(
 
 @router.delete("/{problem_id}",response=ProblemDetailOut)
 def delete_problem(request,problem_id:UUID):
-    problem = get_object_or_404(Problem,id=problem_id)
     return delete(problem_id,Problem)
 
 @router.get('/{problem_id}/status',response=ProblemStatusUpdate)
@@ -87,11 +86,12 @@ def getProblemStatus(request,problem_id:UUID):
     return problem
 
 @router.patch('/{problem_id}/status',response=ProblemStatusUpdate)
-def getProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
+def updateProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
     problem=get_object_or_404(Problem,id=problem_id)
     update_data = data.dict(exclude_unset=True)
     for attr,value in update_data.items():
         setattr(problem,attr,value)
+    problem.save()
     return problem
 
 
@@ -147,7 +147,7 @@ def list_testcases(request, problem_id: UUID):
     problem = get_object_or_404(Problem, id=problem_id)
 
     # 获取该题目下的所有测试用例
-    testcases = TestCase.objects.filter(problem=problem)
+    testcases = TestCase.objects.filter(problem=problem).order_by('created_at')
 
     return testcases
 
