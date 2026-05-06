@@ -48,7 +48,8 @@ export interface ContestListItem {
   contest_start_time: string;
   contest_end_time: string;
   creator_name?: string;
-  is_public: boolean
+  is_public: boolean;
+  status?: 'finished' | 'pending' | 'running';
 }
 
 // 竞赛详情 (对应 ContestDetailOut)
@@ -86,10 +87,6 @@ export interface ContestProblemIn {
   order: number;
   color: string;
   alias: string;
-}
-
-export interface VirtualProblemIn {
-  description: string;
 }
 
 export interface VirtualProblemBindIn {
@@ -130,10 +127,10 @@ export interface ContestDetailOutWithVp {
 }
 
 export interface VirtualProblemIn {
-  name: string
-  description: string
-  order?: number
-  color?: string
+  name: string;
+  description: string;
+  order?: number;
+  color?: string;
 }
 
 
@@ -194,10 +191,20 @@ export function removeGroupMembersApi(id: string, user_id: string) {
  */
 
 /** 获取竞赛列表 (带权限过滤) */
-export function getContestListApi(params?: { keyword?: string }) {
+export function getContestListApi(params?: {
+  keyword?: string;
+  is_public?: boolean;
+  status?: 'finished' | 'pending' | 'running';
+}) {
   const query: Record<string, any> = {};
   if (params?.keyword?.trim()) {
     query.keyword = params.keyword.trim();
+  }
+  if (typeof params?.is_public === 'boolean') {
+    query.is_public = params.is_public;
+  }
+  if (params?.status) {
+    query.status = params.status;
   }
   return requestClient.get<ContestListItem[]>('/api/contest/contests', {
     params: query
