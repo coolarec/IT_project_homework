@@ -20,7 +20,11 @@
     </div>
 
     <!-- 表格容器：使用卡片样式 -->
-    <div class="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-7 my-4 px-4">
+    <div v-if="!loading && tableData.length === 0" class="empty-state">
+      当前没有匹配的用户组，试试调整关键词或创建一个新小组。
+    </div>
+
+    <div v-else class="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-7 my-4 px-4">
       <!-- 使用 v-for 循环渲染卡片 -->
       <el-card v-for="item in tableData" :key="item.id" shadow="never" class="h-full !rounded-xl">
         <template #header>
@@ -146,7 +150,8 @@ const form = reactive<UserGroupIn>({
 const fetchList = async () => {
   loading.value = true;
   try {
-    const res = await getGroupListApi({ name: searchKeyword.value });
+    const keyword = searchKeyword.value.trim();
+    const res = await getGroupListApi({ name: keyword });
     tableData.value = res;
   } catch (error) {
     ElMessage.error('获取列表失败');
@@ -170,13 +175,21 @@ const openDialog = (type: 'create' | 'edit', row?: UserGroup) => {
 };
 
 const handleSubmit = async () => {
-  if (!form.name) return ElMessage.warning('请输入名称');
+  const name = form.name.trim();
+  if (!name) return ElMessage.warning('请输入名称');
+  if (name.length > 32) return ElMessage.warning('名称长度不能超过 32 个字符');
+
   try {
+    const payload = {
+      ...form,
+      name,
+      description: form.description?.trim() || '',
+    };
     if (dialogType.value === 'create') {
-      await createGroupApi(form);
+      await createGroupApi(payload);
       ElMessage.success('创建成功');
     } else {
-      await updateGroupApi(currentGroupId.value, form);
+      await updateGroupApi(currentGroupId.value, payload);
       ElMessage.success('更新成功');
     }
     dialogVisible.value = false;
@@ -219,4 +232,10 @@ const openMemberDialog = (row: UserGroup) => {
 onMounted(() => fetchList());
 </script>
 
-<style scoped></style>
+<style scoped>
+.empty-state {
+  padding: 48px 16px;
+  text-align: center;
+  color: #909399;
+}
+</style>
