@@ -25,6 +25,12 @@
           </div>
         </div>
         <div class="flex gap-2">
+          <el-select v-model="progressFilter" class="w-40" @change="applyProgressFilter">
+            <el-option label="全部题目" value="all" />
+            <el-option label="仅看未绑定" value="unbound" />
+            <el-option label="仅看未完成" value="unfinished" />
+            <el-option label="仅看已完成" value="finished" />
+          </el-select>
           <el-button type="success" :icon="Plus" @click="openVpDialog('create')">
             添加题目占位
           </el-button>
@@ -37,7 +43,10 @@
       <template #header>
         <div class="flex justify-between items-center">
           <span class="font-bold text-lg ">题目准备进度</span>
-          <div class="flex gap-4 text-[12px] font-normal">
+          <div class="flex items-center gap-4 text-[12px] font-normal">
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+              总进度 {{ completedProblemCount }}/{{ totalProblemCount }}
+            </span>
             <span class="flex items-center gap-1"><i class="matrix-dot bg-slate-200"></i> 未开始</span>
             <span class="flex items-center gap-1"><i class="matrix-dot bg-amber-400"></i> 进行中</span>
             <span class="flex items-center gap-1"><i class="matrix-dot bg-emerald-500"></i> 已完成</span>
@@ -45,7 +54,7 @@
         </div>
       </template>
 
-      <el-table :data="contest?.virtual_problems" style="width: 100%" border stripe>
+      <el-table :data="filteredVirtualProblems" style="width: 100%" border stripe>
         <el-table-column label="#" width="60" align="center">
           <template #default="{ $index }">
             {{ String.fromCharCode(65 + $index) }}
@@ -189,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   ElMessage, ElMessageBox, ElTooltip, ElDialog, ElButton,
@@ -211,6 +220,7 @@ import {
   type ContestDetailOutWithVp,
 } from '#/api/contest';
 import { getProblemListApi, type ProblemListItem } from '#/api/problem';
+import { computed } from 'vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -225,6 +235,7 @@ const contest = ref<ContestDetailOutWithVp>({
   creator_name: '',
   virtual_problems: []
 })
+const progressFilter = ref<'all' | 'finished' | 'unbound' | 'unfinished'>('all');
 
 // 9步准备流程配置
 const stepConfig = [
@@ -246,6 +257,35 @@ const getStatusClass = (s: number) => [
   'bg-amber-400 border-amber-500',
   'bg-emerald-500 border-emerald-600'
 ][s] || 'bg-slate-200';
+
+const totalProblemCount = computed(() => contest.value.virtual_problems.length);
+
+const isProblemReady = (problem: any) =>
+  stepConfig.every((step) => Number(problem?.[step.key]) === 2);
+
+const completedProblemCount = computed(
+  () => contest.value.virtual_problems.filter((problem) => isProblemReady(problem)).length,
+);
+
+const filteredVirtualProblems = computed(() => {
+  const problems = contest.value.virtual_problems ?? [];
+  switch (progressFilter.value) {
+    case 'unbound':
+      return problems.filter((problem) => !problem.is_bound);
+    case 'unfinished':
+      return problems.filter((problem) => !isProblemReady(problem));
+    case 'finished':
+      return problems.filter((problem) => isProblemReady(problem));
+    default:
+      return problems;
+  }
+});
+
+const applyProgressFilter = () => {
+  if (filteredVirtualProblems.value.length === 0) {
+    ElMessage.info('当前筛选条件下没有匹配的题目');
+  }
+};
 
 // --- 数据初始化 ---
 const loadDetail = async () => {
@@ -341,7 +381,6 @@ const searchProblems = async (query: string) => {
   bindDialog.searching = true;
   try {
     const res = await getProblemListApi({ keyword: query });
-    console.log(res)
     bindDialog.options = Array.isArray(res) ? res : (res as any).items || [];
   } finally {
     bindDialog.searching = false;
