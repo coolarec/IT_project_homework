@@ -1,26 +1,47 @@
-from django.db import transaction
-from django.db.models import Q  # 必须导入 Q 对象
-from django.shortcuts import get_object_or_404
-from ninja import Router, File, Form
 import os
-import zipfile
-import tempfile
-from ninja.files import UploadedFile
-from core.file_manager.file_manager_model import FileManager
-from core.file_manager.storage_backends import get_storage_backend
-from django.http import FileResponse, HttpResponse
-from typing import List
 import re
-from common.fu_crud import create, retrieve, delete, batch_delete
-from .models import Tag, Problem, Example, Solution
-from .schemas import ProblemCreateIn, ProblemListOut, ProblemDetailOut, TagOut, SolutionOut, SolutionIn, TestCaseOut, TestCase, TagIn,ProblemUpdateIn,ProblemStatusUpdate
-from core.file_manager.file_manager_services import save_file_to_manager
-from core.user.user_model import User
+import tempfile
+import zipfile
 from typing import List, Optional
-from uuid import UUID
 from urllib.parse import quote
+from uuid import UUID
+
+from django.http import FileResponse, HttpResponse
+from django.db import transaction
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from ninja import File, Form, Router
+from ninja.files import UploadedFile
+
+from common.fu_crud import create, retrieve, delete, batch_delete
+from core.file_manager.file_manager_model import FileManager
+from core.file_manager.file_manager_services import save_file_to_manager
+from core.file_manager.storage_backends import get_storage_backend
+from core.user.user_model import User
+from .models import Example, Problem, Solution, Tag
+from .schemas import ProblemCreateIn, ProblemDetailOut, ProblemListOut, ProblemStatusUpdate, ProblemUpdateIn, SolutionIn, SolutionOut, TagIn, TagOut, TestCase, TestCaseOut
 
 router = Router(tags=["Problems"])
+
+
+def is_problem_admin(request) -> bool:
+    user_type = getattr(request.auth, 'user_type', None)
+    return user_type in [0, 1]
+
+
+def get_problem_for_read(request, problem_id: UUID) -> Problem:
+    queryset = Problem.objects.prefetch_related('tags', 'examples', 'solutions')
+    problem = get_object_or_404(queryset, id=problem_id)
+    if is_problem_admin(request) or problem.is_public or problem.problem_setter_id == request.auth.id:
+        return problem
+    return get_object_or_404(queryset, id=problem_id, problem_setter=request.auth)
+
+
+def get_problem_for_manage(request, problem_id: UUID) -> Problem:
+    queryset = Problem.objects.prefetch_related('tags', 'examples')
+    if is_problem_admin(request):
+        return get_object_or_404(queryset, id=problem_id)
+    return get_object_or_404(queryset, id=problem_id, problem_setter=request.auth)
 
 
 @router.post("/", response=ProblemDetailOut)
@@ -48,18 +69,16 @@ def update_problem(
     problem_id: UUID,
     payload: ProblemUpdateIn,
 ):
-    problem = get_object_or_404(Problem, id=problem_id)
+    problem = get_problem_for_manage(request, problem_id)
 
     data = payload.dict(exclude_unset=True)
 
     #  普通字段
     for field, value in data.items():
-        print()
         if field not in ("tags", "examples"):
             setattr(problem, field, value)
     problem.save()
 
-    problem.tags.clear()
     #  多对多：标签
     if "tags" in data:
         problem.tags.set(data["tags"])
@@ -78,16 +97,17 @@ def update_problem(
 
 @router.delete("/{problem_id}",response=ProblemDetailOut)
 def delete_problem(request,problem_id:UUID):
-    return delete(problem_id,Problem)
+    problem = get_problem_for_manage(request, problem_id)
+    return delete(problem.id, Problem)
 
 @router.get('/{problem_id}/status',response=ProblemStatusUpdate)
 def getProblemStatus(request,problem_id:UUID):
-    problem=get_object_or_404(Problem,id=problem_id)
+    problem = get_problem_for_manage(request, problem_id)
     return problem
 
 @router.patch('/{problem_id}/status',response=ProblemStatusUpdate)
 def updateProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
-    problem=get_object_or_404(Problem,id=problem_id)
+    problem = get_problem_for_manage(request, problem_id)
     update_data = data.dict(exclude_unset=True)
     for attr,value in update_data.items():
         setattr(problem,attr,value)
@@ -96,12 +116,17 @@ def updateProblemStatus(request,problem_id:UUID ,data:ProblemStatusUpdate):
 
 
 @router.get("/", response=List[ProblemListOut])
-def list_problems(request, keyword: Optional[str] = None):
+def list_problems(
+    request,
+    keyword: Optional[str] = None,
+    is_public: Optional[bool] = None,
+    difficulty: Optional[int] = None,
+):
     # 预加载标签并按时间排序
     queryset = Problem.objects.prefetch_related('tags').order_by('-created_at')
 
     # 权限过滤逻辑
-    if request.auth.USER_TYPE_CHOICES not in [0, 1]:
+    if not is_problem_admin(request):
         queryset = queryset.filter(
             Q(is_public=True) | Q(problem_setter=request.auth)
         )
@@ -109,23 +134,20 @@ def list_problems(request, keyword: Optional[str] = None):
     # 关键词搜索逻辑
     if keyword:
         queryset = queryset.filter(
-            Q(title__icontains=keyword)           # 标题包含关键词（不区分大小写）
+            Q(title__icontains=keyword) | Q(tags__name__icontains=keyword)
         )
-    return queryset
+
+    if is_public is not None:
+        queryset = queryset.filter(is_public=is_public)
+
+    if difficulty is not None:
+        queryset = queryset.filter(difficulty=difficulty)
+
+    return queryset.distinct()
 
 @router.get("/{problem_id}",response=ProblemDetailOut)
 def getProblemDetail(request,problem_id:UUID):
-    
-    print(request.auth.user_type)
-
-    if request.auth.user_type == 0 or request.auth.user_type == 1 :
-        return get_object_or_404(Problem,id=problem_id)
-    
-    return get_object_or_404(
-        Problem,
-        id=problem_id,
-        problem_setter=request.auth
-    )
+    return get_problem_for_read(request, problem_id)
 
 @router.get("/tags/all", response=List[TagOut])
 def list_tags(request):
@@ -144,7 +166,7 @@ def deleteTag(request,tag_id:UUID):
 @router.get("/{problem_id}/testcases", response=List[TestCaseOut])
 def list_testcases(request, problem_id: UUID):
     # 确认题目是否存在
-    problem = get_object_or_404(Problem, id=problem_id)
+    problem = get_problem_for_manage(request, problem_id)
 
     # 获取该题目下的所有测试用例
     testcases = TestCase.objects.filter(problem=problem).order_by('created_at')
@@ -156,16 +178,7 @@ def list_testcases(request, problem_id: UUID):
 @router.get("/{problem_id}/testcases/zip")
 def download_testcases(request, problem_id: UUID):
     """打包并下载指定题目的所有测试点为 zip 文件"""
-    problem = get_object_or_404(Problem, id=problem_id)
-
-    # 权限校验：管理员或出题者可以下载
-    # try:
-    #     user_type = request.auth.user_type
-    # except Exception:
-    #     user_type = None
-
-    # if user_type not in (0, 1) and problem.problem_setter != request.auth:
-    #     return HttpResponse('Forbidden', status=403)
+    problem = get_problem_for_manage(request, problem_id)
 
     testcases = TestCase.objects.filter(problem=problem)
     if not testcases.exists():
@@ -239,6 +252,7 @@ def download_testcases(request, problem_id: UUID):
 def delete_testcase(request, testcase_id: UUID):
     # 找到对应的测试点
     testcase = get_object_or_404(TestCase, id=testcase_id)
+    get_problem_for_manage(request, testcase.problem_id)
 
     # 执行删除
 
@@ -246,14 +260,13 @@ def delete_testcase(request, testcase_id: UUID):
 
 @router.get('/{problem_id}/solutions',response=List[SolutionOut])
 def getSolutions(request,problem_id:UUID):
-    user=request.auth
-    problem = get_object_or_404(Problem,id=problem_id)
+    problem = get_problem_for_read(request, problem_id)
     solution = problem.solutions.all()
     return solution
 
 @router.post("/{problem_id}/solutions", response=SolutionOut)
 def create_solution(request, problem_id: UUID, payload: SolutionIn):
-    problem = get_object_or_404(Problem, id=problem_id)
+    problem = get_problem_for_manage(request, problem_id)
     solution = Solution.objects.create(
         problem=problem,
         user=request.auth,
@@ -264,6 +277,7 @@ def create_solution(request, problem_id: UUID, payload: SolutionIn):
 @router.delete('solution/{solution_id}',response=SolutionOut)
 def delete_solution(request,solution_id:UUID):
     solution = get_object_or_404(Solution,id=solution_id)
+    get_problem_for_manage(request, solution.problem_id)
     return delete(solution_id,Solution)
 
 @router.post("/{problem_id}/testcase", response=TestCaseOut)
@@ -275,7 +289,7 @@ def upload_testcase(
     weight: int = Form(1)
 ):
     # 1. 获取题目
-    problem = get_object_or_404(Problem, id=problem_id)
+    problem = get_problem_for_manage(request, problem_id)
 
     with transaction.atomic():
         # 2. 自动维护目录结构: testcases -> {problem_id}

@@ -50,6 +50,12 @@ export interface ProblemListItem {
   created_at: string;
 }
 
+export interface ProblemListParams {
+  difficulty?: number;
+  is_public?: boolean;
+  keyword?: string;
+}
+
 // 题目详情 (对应 ProblemDetailOut)
 export interface ProblemDetail extends ProblemListItem {
   description: string;
@@ -150,12 +156,20 @@ export interface SolutionInput {
  * --- 题目相关逻辑处理(problem) ---
  */
 /** 获取题目列表 (包含公开题和自己创建的题) */
-export function getProblemListApi(params?: { keyword?: string }) {
+export function getProblemListApi(params?: ProblemListParams) {
   // 构建一个干净的请求对象
   const query: Record<string, any> = {};
 
   if (params?.keyword && params.keyword.trim() !== '') {
     query.keyword = params.keyword.trim();
+  }
+
+  if (typeof params?.is_public === 'boolean') {
+    query.is_public = params.is_public;
+  }
+
+  if (typeof params?.difficulty === 'number' && params.difficulty > 0) {
+    query.difficulty = params.difficulty;
   }
 
   return requestClient.get<ProblemListItem[]>('/api/problem/', {

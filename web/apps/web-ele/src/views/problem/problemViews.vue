@@ -7,8 +7,31 @@
         <p class=" text-sm mt-1">管理个人题目及公共题目</p>
 
       </div>
-      <!-- <el-button type="primary" @click="fetchList">刷新列表</el-button> -->
-      <el-input v-model="keyword" style="width: 240px" class="my-2" placeholder="请输入搜索关键词" :suffix-icon="Search" />
+      <div class="flex flex-col gap-3 md:flex-row md:items-center">
+        <el-input
+          v-model="keyword"
+          style="width: 240px"
+          class="my-2"
+          placeholder="请输入题目名或标签"
+          :suffix-icon="Search"
+          clearable
+          @keyup.enter="fetchList"
+        />
+        <el-select v-model="visibilityFilter" style="width: 140px" @change="fetchList">
+          <el-option label="全部可见性" value="all" />
+          <el-option label="公开题" value="public" />
+          <el-option label="私有题" value="private" />
+        </el-select>
+        <el-select v-model="difficultyFilter" style="width: 140px" @change="fetchList">
+          <el-option label="全部难度" :value="0" />
+          <el-option label="难度 1" :value="1" />
+          <el-option label="难度 2" :value="2" />
+          <el-option label="难度 3" :value="3" />
+          <el-option label="难度 4" :value="4" />
+          <el-option label="难度 5" :value="5" />
+        </el-select>
+        <el-button type="primary" @click="fetchList">刷新列表</el-button>
+      </div>
     </div>
 
     <el-card shadow="never" class="rounded-xl border-none">
@@ -46,6 +69,9 @@
           </template>
         </el-table-column>
       </el-table>
+      <div v-if="!loading && tableData.length === 0" class="empty-state">
+        当前筛选条件下没有题目，试试调整关键词或筛选条件。
+      </div>
     </el-card>
 
     <!-- 右侧遮罩抽屉 -->
@@ -67,7 +93,7 @@
 import { ref, reactive, onMounted, watch, nextTick } from 'vue';
 import {
   ElDrawer, ElTable, ElTableColumn,
-  ElCard, ElRate, ElButton, ElTag, ElInput
+  ElCard, ElRate, ElButton, ElTag, ElInput, ElSelect, ElOption
 } from 'element-plus';
 import { getProblemListApi, type ProblemListItem, } from '#/api/problem';
 import { router } from '#/router';
@@ -76,6 +102,8 @@ import testcaseList from '#/components/testcase-list/testcase-list.vue';
 import SolutionList from '#/components/solution-list/solution-list.vue';
 const loading = ref(false);
 const tableData = ref<ProblemListItem[]>([]);
+const difficultyFilter = ref(0);
+const visibilityFilter = ref<'all' | 'public' | 'private'>('all');
 
 const drawerVisible = ref(false);
 const drawerType = ref<'testcase' | 'solution'>('testcase');
@@ -95,8 +123,14 @@ const keyword = ref(''); // 搜索框绑定的变量
 const fetchList = async () => {
   loading.value = true;
   try {
-    // 传给 API 一个包含 keyword 的对象
+    const isPublic =
+      visibilityFilter.value === 'all'
+        ? undefined
+        : visibilityFilter.value === 'public';
+
     tableData.value = await getProblemListApi({
+      difficulty: difficultyFilter.value || undefined,
+      is_public: isPublic,
       keyword: keyword.value
     });
   } catch (error) {
@@ -110,7 +144,7 @@ watch(
   () => keyword.value,
   () => {
     fetchList()
-  }
+  },
 )
 
 onMounted(async () => {
@@ -148,6 +182,12 @@ const openEditor = (row: ProblemListItem) => {
 
 .example-box {
   border-left: 4px solid #409eff;
+}
+
+.empty-state {
+  padding: 32px 16px;
+  text-align: center;
+  color: #909399;
 }
 
 :deep(.el-card__body) {
