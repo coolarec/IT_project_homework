@@ -35,6 +35,18 @@ def raise_auth_error(message: str):
     raise HttpError(status_code=401, message=message)
 
 
+def build_login_response(user: User, access_token: str, refresh_token: str, expire_time: int) -> LoginOut:
+    """统一组装登录相关响应体。"""
+    return LoginOut(
+        id=str(user.pk),
+        accessToken=access_token,
+        username=user.username,
+        realName=user.name,
+        refreshToken=refresh_token,
+        expireTime=expire_time,
+    )
+
+
 @router.post("/login", response=LoginOut, auth=None, summary="用户登录")
 def login(request, data: LoginIn):
     """
@@ -67,14 +79,7 @@ def login(request, data: LoginIn):
         # 记录登录会话到新的登录日志系统
         AuthService.record_login_session(user, login_username, ip_address, user_agent)
 
-        return LoginOut(
-            id=str(user.pk),
-            accessToken=access_token,
-            username=user.username,
-            realName=user.name,
-            refreshToken=refresh_token,
-            expireTime=expire_time,
-        )
+        return build_login_response(user, access_token, refresh_token, expire_time)
     except ValueError as e:
         raise_auth_error(str(e))
 
@@ -91,13 +96,11 @@ def refresh_token(request):
     try:
         user, access_token, refresh_token, access_token_expire = AuthService.refresh_access_token(request)
 
-        return LoginOut(
-            id=str(user.pk),
-            accessToken=access_token,
-            username=user.username,
-            realName=user.name,
-            refreshToken=refresh_token,
-            expireTime=access_token_expire,
+        return build_login_response(
+            user,
+            access_token,
+            refresh_token,
+            access_token_expire,
         )
     except ValueError as e:
         raise_auth_error(str(e))
